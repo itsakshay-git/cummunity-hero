@@ -1,0 +1,6 @@
+{
+  "name": "Community Hero",
+  "description": "AI-powered hyperlocal civic issue reporting and resolution platform enabling community spaces to report, verify, prioritize, and track local issues.",
+  "requestFramePermissions": ["geolocation", "camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

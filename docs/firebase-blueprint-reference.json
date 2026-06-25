@@ -1,0 +1,82 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Civic Hero User Profile",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "role": { "type": "string", "enum": ["Citizen", "Community Admin", "Resolver", "Authority"] },
+        "joinedCommunities": { "type": "array", "items": { "type": "string" } },
+        "reputationScore": { "type": "number" },
+        "points": { "type": "number" },
+        "reportsCreated": { "type": "number" },
+        "reportsVerified": { "type": "number" },
+        "reportsResolved": { "type": "number" }
+      },
+      "required": ["id", "name", "email", "role"]
+    },
+    "Community": {
+      "title": "Community",
+      "description": "Hyperlocal Community",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "description": { "type": "string" },
+        "areaName": { "type": "string" },
+        "adminIds": { "type": "array", "items": { "type": "string" } },
+        "memberIds": { "type": "array", "items": { "type": "string" } },
+        "reputationScore": { "type": "number" },
+        "totalIssues": { "type": "number" },
+        "resolvedIssues": { "type": "number" }
+      },
+      "required": ["id", "name", "description"]
+    },
+    "Issue": {
+      "title": "Issue",
+      "description": "Reported Local Issue",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "communityId": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "severity": { "type": "string" },
+        "status": { "type": "string" },
+        "address": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "reportedBy": { "type": "string" },
+        "reportedByName": { "type": "string" },
+        "aiSummary": { "type": "string" },
+        "aiConfidence": { "type": "number" },
+        "suggestedDepartment": { "type": "string" },
+        "priorityScore": { "type": "number" },
+        "trustScore": { "type": "number" },
+        "verificationCount": { "type": "number" },
+        "fakeCount": { "type": "number" },
+        "assignedTo": { "type": "string" }
+      },
+      "required": ["id", "communityId", "title", "status", "reportedBy"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "Collection of users"
+    },
+    "communities/{communityId}": {
+      "schema": "Community",
+      "description": "Collection of communities"
+    },
+    "issues/{issueId}": {
+      "schema": "Issue",
+      "description": "Collection of reported issues"
+    }
+  }
+}
