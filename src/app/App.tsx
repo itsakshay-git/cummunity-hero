@@ -350,6 +350,7 @@ export default function App() {
                     onJoin={handleJoinCommunity}
                     onLeave={handleLeaveCommunity}
                     onSelectIssue={handleSelectIssue}
+                    currentUser={currentUser}
                   />
                 ) : (
                   <CommunitiesList 

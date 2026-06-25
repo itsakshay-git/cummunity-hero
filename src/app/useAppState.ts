@@ -6,6 +6,7 @@ import { mockUsers, mockCommunities, mockIssues, mockVerifications, mockComments
 import { User, Issue, Community, IssueVerification, UserRole, IssueStatus, Comment, UserActivity } from '../types';
 import { useFeedPosts } from '../features/feed/hooks/useFeedPosts';
 import { getLevelInfo } from '../features/feed/utils';
+import { communitiesService } from '../features/communities/services/communitiesService';
 
 // Helper to recursively sanitize objects for Firestore by converting/stripping undefined values
 const cleanUndefined = (obj: any): any => {
@@ -496,7 +497,7 @@ export function useAppState() {
     setCommunities(prev => [...prev, newComm]);
 
     try {
-      await setDoc(doc(db, 'communities', newId), cleanUndefined(newComm));
+      await communitiesService.createCommunity(newComm);
     } catch (e) {
       console.error('Error saving community to Firestore:', e);
     }
@@ -518,7 +519,7 @@ export function useAppState() {
           ? c.memberIds
           : [...c.memberIds, currentUser.id];
         
-        setDoc(doc(db, 'communities', id), { memberIds: updatedMembers }, { merge: true })
+        communitiesService.updateCommunityMembers(id, updatedMembers)
           .catch(e => console.warn('Could not update community members in Firestore:', e));
 
         return {
@@ -555,7 +556,7 @@ export function useAppState() {
       if (c.id === id) {
         const updatedMembers = c.memberIds.filter(uid => uid !== currentUser.id);
 
-        setDoc(doc(db, 'communities', id), { memberIds: updatedMembers }, { merge: true })
+        communitiesService.updateCommunityMembers(id, updatedMembers)
           .catch(e => console.warn('Could not update community members in Firestore:', e));
 
         return {
@@ -931,10 +932,10 @@ export function useAppState() {
             const updatedResolved = c.resolvedIssues + 1;
             const updatedScore = Math.min(100, c.reputationScore + 4);
 
-            setDoc(doc(db, 'communities', c.id), { 
+            communitiesService.updateCommunityDetails(c.id, { 
               resolvedIssues: updatedResolved,
               reputationScore: updatedScore
-            }, { merge: true })
+            })
               .catch(e => console.warn('Could not update community resolution stats in Firestore:', e));
 
             return {
