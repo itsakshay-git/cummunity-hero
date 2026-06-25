@@ -371,4 +371,4 @@ const FeedPostCard: React.FC<FeedPostCardProps> = ({
   );
 };
 
-export default FeedPostCard;
+export default React.memo(FeedPostCard);

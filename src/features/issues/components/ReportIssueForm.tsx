@@ -1,51 +1,22 @@
 import React, { useState } from 'react';
-import { Sparkles, MapPin, Camera, AlertCircle, RefreshCw, Upload, X, Loader2, Navigation } from 'lucide-react';
 import { Community, IssueCategory, SeverityLevel, Issue } from '../../../types';
-import { GoogleMapSection, hasValidKey } from '../../maps/components/GoogleMapSection';
-import { Map as GMap, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
-import OpenStreetMapSection from '../../maps/components/OpenStreetMapSection';
 import { analyzeIssue } from '../../../services/ai/geminiService';
 import CustomModal from '../../../components/Modal';
+
+// Import modular widgets
+import PresetsPanel from './widgets/PresetsPanel';
+import LocationPicker from './widgets/LocationPicker';
+import ImageUploader from './widgets/ImageUploader';
+import AiScanConsole from './widgets/AiScanConsole';
+
+// Import PRESETS constant
+import { PRESETS } from '../../../lib/constants';
 
 interface ReportIssueFormProps {
   communities: Community[];
   onSubmit: (issue: Omit<Issue, 'id' | 'reportedBy' | 'reportedByName' | 'trustScore' | 'verificationCount' | 'fakeCount' | 'supporterCount' | 'createdAt' | 'updatedAt'>) => void;
   onNavigate: (tab: string) => void;
 }
-
-// Interactive presets for testing
-const PRESETS = [
-  {
-    title: 'Severe Water Leakage',
-    category: 'Water Leakage' as IssueCategory,
-    severity: 'High' as SeverityLevel,
-    description: 'A major underground pipe has ruptured. Water is gushing out onto the street, pooling up near the main society block entrance.',
-    imageUrl: 'https://images.unsplash.com/photo-1508873696983-2df519f0397e?auto=format&fit=crop&w=800&q=80',
-    address: 'Block C Gate, Green Park Society, Pune',
-    department: 'Water Supply Department',
-    aiSummary: 'Rupture in high-pressure supply line resulting in clean water pooling and mild soil erosion risks.'
-  },
-  {
-    title: 'Deplorable Street Waste',
-    category: 'Garbage' as IssueCategory,
-    severity: 'Medium' as SeverityLevel,
-    description: 'Rotting food waste, plastic bags, and household garbage piled at the corner of the public vegetable market.',
-    imageUrl: 'https://images.unsplash.com/photo-1611284446314-60a58ac0deb9?auto=format&fit=crop&w=800&q=80',
-    address: 'Shivajinagar Vegetable Market Road, Pune',
-    department: 'Municipal Waste Management',
-    aiSummary: 'Unsegregated organic solid waste dump causing strong foul odors and inviting pest infestation risks.'
-  },
-  {
-    title: 'Critical Pothole on Active Lane',
-    category: 'Pothole' as IssueCategory,
-    severity: 'Critical' as SeverityLevel,
-    description: 'Extremely deep pothole under the metro pillar that fills with rain/muddy water. Vehicles swerve to avoid it.',
-    imageUrl: 'https://images.unsplash.com/photo-1515162305285-0293e4767cc2?auto=format&fit=crop&w=800&q=80',
-    address: 'High Street Lane 4, Pune',
-    department: 'Public Works & Pavements',
-    aiSummary: 'Deep structural pavement pothole exceeding 5 inches in depth, posing critical risks for motorbikes.'
-  }
-];
 
 export default function ReportIssueForm({ communities, onSubmit, onNavigate }: ReportIssueFormProps) {
   const [formData, setFormData] = useState({
@@ -283,42 +254,7 @@ export default function ReportIssueForm({ communities, onSubmit, onNavigate }: R
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         {/* Left Column: Interactive Presets / Snap Tool */}
-        <div className="space-y-6">
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-            <h3 className="font-bold text-slate-900 text-sm mb-3">Fast-Track Simulation</h3>
-            <p className="text-xs text-slate-500 mb-4">Click any sample incident below to pre-populate the form and test Gemini AI scanning.</p>
-            
-            <div className="space-y-3">
-              {PRESETS.map((preset, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  id={`preset-btn-${idx}`}
-                  onClick={() => handleSelectPreset(preset)}
-                  className="w-full text-left p-3 rounded-xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/20 transition-all flex items-center space-x-3 group cursor-pointer"
-                >
-                  <img 
-                    src={preset.imageUrl} 
-                    alt={preset.title} 
-                    className="w-12 h-12 object-cover rounded-lg border border-slate-100 flex-shrink-0"
-                  />
-                  <div className="min-w-0">
-                    <span className="block font-bold text-slate-900 text-xs group-hover:text-emerald-700 transition-colors">{preset.title}</span>
-                    <span className="text-[10px] text-slate-400 font-mono block">{preset.category} • {preset.severity}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm text-center">
-            <div className="w-12 h-12 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-100">
-              <Camera className="w-5 h-5" />
-            </div>
-            <h4 className="font-bold text-slate-900 text-sm mb-1">Upload Real Image</h4>
-            <p className="text-xs text-slate-500 mb-4">You can paste any direct web image URL in the form field to simulate customized reports.</p>
-          </div>
-        </div>
+        <PresetsPanel onSelectPreset={handleSelectPreset} />
 
         {/* Right Column: Reporting Form */}
         <form onSubmit={handleFormSubmit} className="lg:col-span-2 bg-white p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
@@ -384,253 +320,47 @@ export default function ReportIssueForm({ communities, onSubmit, onNavigate }: R
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Geolocation Input */}
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">Incident Location Address</label>
-                <button
-                  id="btn-gps-locate"
-                  type="button"
-                  onClick={handleLocateMe}
-                  disabled={locating}
-                  className="text-xs text-emerald-600 hover:text-emerald-700 font-bold flex items-center space-x-1 focus:outline-none disabled:opacity-55 cursor-pointer"
-                >
-                  {locating ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Navigation className="w-3.5 h-3.5" />
-                  )}
-                  <span>{locating ? 'Locating...' : 'Use Current GPS'}</span>
-                </button>
-              </div>
-              <div className="relative">
-                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
-                <input 
-                  id="report-input-address"
-                  type="text" 
-                  placeholder="e.g. Lane 3, opposite Flat 402"
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  className="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                  required
-                />
-              </div>
+            <LocationPicker
+              latitude={formData.latitude}
+              longitude={formData.longitude}
+              address={formData.address}
+              category={formData.category}
+              severity={formData.severity}
+              title={formData.title}
+              locating={locating}
+              mapProvider={mapProvider}
+              onLocateMe={handleLocateMe}
+              onChangeAddress={(addr) => setFormData(prev => ({ ...prev, address: addr }))}
+              onMapClick={(lat, lng) => {
+                setFormData(prev => ({ ...prev, latitude: lat, longitude: lng }));
+                reverseGeocode(lat, lng);
+              }}
+              setMapProvider={setMapProvider}
+            />
 
-              {/* Interactive Google/OSM Map Picker */}
-              <div className="h-44 w-full rounded-xl overflow-hidden border border-slate-200 shadow-inner">
-                {mapProvider === 'osm' ? (
-                  <OpenStreetMapSection
-                    height="100%"
-                    center={{ lat: formData.latitude, lng: formData.longitude }}
-                    zoom={14}
-                    markers={[{
-                      id: 'picked-location',
-                      latitude: formData.latitude,
-                      longitude: formData.longitude,
-                      title: formData.title || 'Selected Coordinate',
-                      category: formData.category,
-                      severity: formData.severity,
-                      priorityScore: 0,
-                      address: formData.address || 'Click map to pick new coordinate'
-                    }]}
-                    onMapClick={(lat, lng) => {
-                      setFormData(prev => ({ ...prev, latitude: lat, longitude: lng }));
-                      reverseGeocode(lat, lng);
-                    }}
-                  />
-                ) : (
-                  <GoogleMapSection height="100%" fallbackMessage="API Key unconfigured. Set GOOGLE_MAPS_PLATFORM_KEY to pick exact coordinates on an interactive map.">
-                    <GMap
-                      defaultCenter={{ lat: formData.latitude, lng: formData.longitude }}
-                      defaultZoom={14}
-                      mapId="DEMO_MAP_ID"
-                      internalUsageAttributionIds={['gmp_mcp_codeassist_v1_aistudio']}
-                      style={{ width: '100%', height: '100%' }}
-                      gestureHandling="cooperative"
-                      disableDefaultUI={true}
-                      center={{ lat: formData.latitude, lng: formData.longitude }}
-                      onClick={(e) => {
-                        if (e.detail.latLng) {
-                          const lat = e.detail.latLng.lat;
-                          const lng = e.detail.latLng.lng;
-                          setFormData(prev => ({ ...prev, latitude: lat, longitude: lng }));
-                          reverseGeocode(lat, lng);
-                        }
-                      }}
-                    >
-                      <AdvancedMarker
-                        position={{ lat: formData.latitude, lng: formData.longitude }}
-                        draggable={true}
-                        onDragEnd={(e) => {
-                          if (e.latLng) {
-                            const lat = e.latLng.lat();
-                            const lng = e.latLng.lng();
-                            setFormData(prev => ({ ...prev, latitude: lat, longitude: lng }));
-                            reverseGeocode(lat, lng);
-                          }
-                        }}
-                      >
-                        <Pin background="#10B981" borderColor="#FFFFFF" glyphColor="#FFFFFF" />
-                      </AdvancedMarker>
-                    </GMap>
-                  </GoogleMapSection>
-                )}
-              </div>
-
-              <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono bg-slate-50 p-2.5 rounded-lg border border-slate-200">
-                <div className="flex items-center space-x-2">
-                  <span className="text-slate-500 font-bold">Coordinates:</span>
-                  <span>Lat: {formData.latitude.toFixed(5)}</span>
-                  <span>•</span>
-                  <span>Lon: {formData.longitude.toFixed(5)}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[9px] text-emerald-600 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded">
-                    Map Picker Active
-                  </span>
-                  {hasValidKey && (
-                    <button
-                      type="button"
-                      onClick={() => setMapProvider(prev => prev === 'google' ? 'osm' : 'google')}
-                      className="text-[9px] text-slate-500 hover:text-slate-800 font-bold underline"
-                    >
-                      Switch to {mapProvider === 'google' ? 'OSM' : 'Google'}
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Premium File Upload Input */}
-            <div className="space-y-2">
-              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">Incident Image / Photo</label>
-              
-              {!formData.imageUrl ? (
-                <div 
-                  onDragEnter={handleDrag}
-                  onDragOver={handleDrag}
-                  onDragLeave={handleDrag}
-                  onDrop={handleDrop}
-                  className={`border-2 border-dashed rounded-xl p-4 text-center transition-all flex flex-col items-center justify-center cursor-pointer ${
-                    dragActive 
-                      ? "border-emerald-500 bg-emerald-50/30" 
-                      : "border-slate-300 hover:border-emerald-500 hover:bg-slate-50/50"
-                  }`}
-                >
-                  <input
-                    id="report-input-file"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
-                  <label htmlFor="report-input-file" className="w-full h-full cursor-pointer flex flex-col items-center">
-                    <Upload className="w-6 h-6 text-slate-400 mb-2" />
-                    <span className="text-xs font-bold text-slate-800 block">Drag & drop photo here</span>
-                    <span className="text-[10px] text-slate-500 block mt-1">or <span className="text-emerald-600 underline font-semibold">browse files</span></span>
-                  </label>
-                </div>
-              ) : (
-                <div className="relative border border-slate-200 rounded-xl overflow-hidden bg-slate-50 p-2 flex items-center space-x-3">
-                  <img 
-                    src={formData.imageUrl} 
-                    alt="Uploaded incident" 
-                    className="w-16 h-16 object-cover rounded-lg border border-slate-100 flex-shrink-0"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <span className="text-xs font-bold text-slate-800 block truncate">Photo Selected</span>
-                    <span className="text-[10px] text-slate-500 block truncate font-mono">
-                      {formData.imageUrl.startsWith('data:') ? 'Local file uploaded (base64)' : formData.imageUrl}
-                    </span>
-                  </div>
-                  <button
-                    id="btn-remove-photo"
-                    type="button"
-                    onClick={() => {
-                      setFormData(prev => ({ ...prev, imageUrl: '' }));
-                      setAiResult(null);
-                    }}
-                    className="w-8 h-8 bg-slate-100 hover:bg-red-50 hover:text-red-600 text-slate-500 rounded-lg flex items-center justify-center transition-all cursor-pointer"
-                    title="Remove Photo"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
-
-              {/* URL input option for advanced links / fast-tracking */}
-              <div className="pt-1">
-                <input 
-                  id="report-input-image-fallback"
-                  type="text" 
-                  placeholder="Or paste direct image URL (e.g. http://...)"
-                  value={formData.imageUrl.startsWith('data:') ? '' : formData.imageUrl}
-                  onChange={(e) => {
-                    setFormData({ ...formData, imageUrl: e.target.value });
-                    setAiResult(null);
-                  }}
-                  className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-800 text-[11px] rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500/20 focus:border-emerald-500 font-mono"
-                />
-              </div>
-            </div>
+            <ImageUploader
+              imageUrl={formData.imageUrl}
+              dragActive={dragActive}
+              onDrag={handleDrag}
+              onDrop={handleDrop}
+              onFileChange={handleFileChange}
+              onRemovePhoto={() => {
+                setFormData(prev => ({ ...prev, imageUrl: '' }));
+                setAiResult(null);
+              }}
+              onChangeImageUrl={(url) => {
+                setFormData(prev => ({ ...prev, imageUrl: url }));
+                setAiResult(null);
+              }}
+            />
           </div>
 
-          {/* AI Analyze trigger */}
-          {formData.imageUrl && (
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Sparkles className="w-5 h-5 text-emerald-600 animate-pulse" />
-                  <span className="text-xs font-bold text-slate-800">Gemini AI Command Scan Module</span>
-                </div>
-                {!aiResult && !scanning && (
-                  <button
-                    id="btn-trigger-ai-scan"
-                    type="button"
-                    onClick={triggerAiScan}
-                    className="px-3.5 py-1.5 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-500 transition-all flex items-center space-x-1.5 cursor-pointer"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    <span>Run Gemini Diagnosis</span>
-                  </button>
-                )}
-              </div>
-
-              {scanning && (
-                <div className="flex items-center space-x-3 text-sm text-slate-600 font-medium py-2">
-                  <RefreshCw className="w-4 h-4 animate-spin text-emerald-600" />
-                  <span>Gemini is analyzing issue image and text details...</span>
-                </div>
-              )}
-
-              {aiResult && (
-                <div className="space-y-3 pt-2 text-xs border-t border-slate-200">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-[11px]">
-                    <div className="bg-white p-2 rounded border border-slate-150">
-                      <span className="block text-slate-400 font-mono uppercase">Detected Cat</span>
-                      <span className="font-bold text-slate-900">{aiResult.category}</span>
-                    </div>
-                    <div className="bg-white p-2 rounded border border-slate-150">
-                      <span className="block text-slate-400 font-mono uppercase">Severity Rank</span>
-                      <span className="font-bold text-amber-700">{aiResult.severity}</span>
-                    </div>
-                    <div className="bg-white p-2 rounded border border-slate-150">
-                      <span className="block text-slate-400 font-mono uppercase">Priority Score</span>
-                      <span className="font-bold text-red-600">{aiResult.priorityScore} / 100</span>
-                    </div>
-                    <div className="bg-white p-2 rounded border border-slate-150">
-                      <span className="block text-slate-400 font-mono uppercase">Confidence</span>
-                      <span className="font-bold text-emerald-600">{(aiResult.confidence * 100).toFixed(0)}%</span>
-                    </div>
-                  </div>
-                  <div className="bg-emerald-50/50 p-2.5 rounded border border-emerald-100 text-[11px] text-emerald-950">
-                    <span className="block font-bold text-emerald-900 mb-0.5">Gemini Civic Abstract:</span>
-                    <span>{aiResult.summary}</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+          <AiScanConsole
+            imageUrl={formData.imageUrl}
+            scanning={scanning}
+            aiResult={aiResult}
+            onTriggerScan={triggerAiScan}
+          />
 
           <div className="flex justify-end space-x-3 pt-4 border-t border-slate-200">
             <button 

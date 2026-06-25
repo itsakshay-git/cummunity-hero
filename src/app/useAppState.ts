@@ -26,10 +26,35 @@ const cleanUndefined = (obj: any): any => {
   return obj;
 };
 
+// Helper to parse the initial route state from the window URL hash
+const getInitialStateFromHash = () => {
+  const hash = window.location.hash;
+  if (!hash || hash === '#/') {
+    return { tab: 'feed', issueId: null, communityId: 'all' };
+  }
+  const [path, queryString] = hash.slice(2).split('?');
+  const params = new URLSearchParams(queryString || '');
+  const id = params.get('id');
+  
+  if (path === 'issue-details') {
+    return { tab: 'issue-details', issueId: id, communityId: 'all' };
+  }
+  if (path === 'communities') {
+    return { tab: 'communities', issueId: null, communityId: id || 'all' };
+  }
+  
+  const validPaths = ['feed', 'dashboard', 'report', 'map-explorer', 'issues', 'leaderboard', 'profile', 'challenges'];
+  if (validPaths.includes(path)) {
+    return { tab: path, issueId: null, communityId: 'all' };
+  }
+  
+  return { tab: '404', issueId: null, communityId: 'all' };
+};
+
 export function useAppState() {
   const [appStarted, setAppStarted] = useState(false);
-  const [activeTab, setActiveTab] = useState('feed');
-  const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState(() => getInitialStateFromHash().tab);
+  const [selectedIssueId, setSelectedIssueId] = useState<string | null>(() => getInitialStateFromHash().issueId);
 
   // Core application states (simulated local DB collections)
   const [users, setUsers] = useState<User[]>(mockUsers);
@@ -42,7 +67,7 @@ export function useAppState() {
   // Real Auth & Profile States
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentRole, setCurrentRole] = useState<UserRole>('Citizen');
-  const [selectedCommunityId, setSelectedCommunityId] = useState<string>('all');
+  const [selectedCommunityId, setSelectedCommunityId] = useState<string>(() => getInitialStateFromHash().communityId);
   
   // Auth UI Controls
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -65,6 +90,27 @@ export function useAppState() {
     deleteComment,
     addNewPost
   } = useFeedPosts(currentUser);
+
+  // Listen and sync hash routing
+  useEffect(() => {
+    const handleHashChange = () => {
+      const { tab, issueId, communityId } = getInitialStateFromHash();
+      setActiveTab(prev => (prev !== tab ? tab : prev));
+      setSelectedIssueId(prev => (prev !== issueId ? issueId : prev));
+      setSelectedCommunityId(prev => (prev !== communityId ? communityId : prev));
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    
+    // Default fallback to #/feed if hash is completely empty
+    if (!window.location.hash || window.location.hash === '#/') {
+      window.location.hash = '#/feed';
+    }
+    
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+    };
+  }, []);
 
   // Listen to Firebase Auth state
   useEffect(() => {
@@ -924,13 +970,20 @@ export function useAppState() {
   }, [selectedIssueId, currentUser, issues, updateUserProfile]);
 
   const handleSelectIssue = useCallback((id: string) => {
-    setSelectedIssueId(id);
-    setActiveTab('issue-details');
+    window.location.hash = `#/issue-details?id=${id}`;
   }, []);
 
   const handleNavigation = useCallback((tab: string) => {
-    setActiveTab(tab);
-    setSelectedIssueId(null);
+    window.location.hash = `#/${tab}`;
+  }, []);
+
+  const handleSetSelectedCommunityId = useCallback((id: string) => {
+    setSelectedCommunityId(id);
+    if (id === 'all') {
+      window.location.hash = '#/communities';
+    } else {
+      window.location.hash = `#/communities?id=${id}`;
+    }
   }, []);
 
   return {
@@ -956,7 +1009,7 @@ export function useAppState() {
     commentsCache,
     commentsLoading,
     setAuthModalOpen,
-    setSelectedCommunityId,
+    setSelectedCommunityId: handleSetSelectedCommunityId,
     setAppStarted,
     loadComments,
     updateUserProfile,

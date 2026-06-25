@@ -121,4 +121,4 @@ export const TimelineChart: React.FC<TimelineChartProps> = ({ timelineData }) =>
   );
 };
 
-export default TimelineChart;
+export default React.memo(TimelineChart);

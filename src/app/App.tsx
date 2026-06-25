@@ -12,18 +12,21 @@ import {
 
 import AuthModal from '../features/auth/components/AuthModal';
 import LandingPage from '../components/layout/LandingPage';
-import Dashboard from '../features/dashboard/components/Dashboard';
-import CommunitiesList from '../features/communities/components/CommunitiesList';
-import ReportIssueForm from '../features/issues/components/ReportIssueForm';
-import IssuesList from '../features/issues/components/IssuesList';
-import IssueDetails from '../features/issues/components/IssueDetails';
-import Leaderboard from '../features/dashboard/components/Leaderboard';
-import MapExplorer from '../features/maps/components/MapExplorer';
-import Feed from '../features/feed/components/Feed';
-import CommunityPage from '../features/communities/components/CommunityPage';
-import ProfilePage from '../features/profile/components/ProfilePage';
 import { useAppState } from './useAppState';
 import { UserRole, IssueStatus } from '../types';
+
+// Lazy load page/tab panels
+const Dashboard = React.lazy(() => import('../features/dashboard/components/Dashboard'));
+const CommunitiesList = React.lazy(() => import('../features/communities/components/CommunitiesList'));
+const ReportIssueForm = React.lazy(() => import('../features/issues/components/ReportIssueForm'));
+const IssuesList = React.lazy(() => import('../features/issues/components/IssuesList'));
+const IssueDetails = React.lazy(() => import('../features/issues/components/IssueDetails'));
+const Leaderboard = React.lazy(() => import('../features/dashboard/components/Leaderboard'));
+const MapExplorer = React.lazy(() => import('../features/maps/components/MapExplorer'));
+const Feed = React.lazy(() => import('../features/feed/components/Feed'));
+const CommunityPage = React.lazy(() => import('../features/communities/components/CommunityPage'));
+const ProfilePage = React.lazy(() => import('../features/profile/components/ProfilePage'));
+const NotFoundPage = React.lazy(() => import('../components/layout/NotFoundPage'));
 
 export default function App() {
   const {
@@ -293,7 +296,15 @@ export default function App() {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
             >
-              {activeTab === 'feed' && (
+              <React.Suspense fallback={
+                <div className="flex items-center justify-center min-h-[50vh] font-sans">
+                  <div className="flex flex-col items-center space-y-3">
+                    <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+                    <span className="text-xs text-slate-500 font-medium">Loading panel...</span>
+                  </div>
+                </div>
+              }>
+                {activeTab === 'feed' && (
                 <Feed
                   issues={issues}
                   communities={communities}
@@ -459,6 +470,10 @@ export default function App() {
                   </div>
                 </div>
               )}
+              {activeTab === '404' && (
+                <NotFoundPage onBackToFeed={() => handleNavigation('feed')} />
+              )}
+              </React.Suspense>
             </motion.div>
           </AnimatePresence>
         </main>

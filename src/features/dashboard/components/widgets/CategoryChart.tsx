@@ -70,4 +70,4 @@ export const CategoryChart: React.FC<CategoryChartProps> = ({ categoryData, tota
   );
 };
 
-export default CategoryChart;
+export default React.memo(CategoryChart);
