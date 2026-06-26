@@ -104,3 +104,31 @@ Verifies TypeScript compilation correctness:
 ```powershell
 npm run lint
 ```
+
+---
+
+## 🔑 Preset Demo Accounts & Testing
+
+To make evaluation and testing simple, **Community Hero** provides four pre-configured mock user profiles centered around **Chandrapur, Maharashtra**. 
+
+### 1. Simplified Registration
+We have removed the **Civic Role** and **Civic Jurisdiction (City)** dropdown inputs from the registration page to ensure a clean, modern user experience. When you sign up a new account, you default to the **Citizen** role and your location defaults to your GPS closest city (or **Chandrapur** if GPS permissions are denied).
+
+### 2. Relocated Civic Settings
+You can customize your role and city post-login:
+- **Profile Page**: Click **"Edit Profile"** on your profile page to change your Name, Username, Bio, freeform Location, Civic City Jurisdiction, and Civic Role.
+- **Settings Page**: Navigate to **Settings** (left sidebar on desktop, bottom navigation on mobile) and select the **Preferences** tab. You can update your Primary City and Civic Role from here.
+
+### 3. Preset Hackathon Accounts
+You can log in directly to these pre-configured user credentials (or use the 1-Click Demo Login panel in the login modal):
+
+| Role | Email | Password | Pre-seeded Mock User Profile Details |
+| :--- | :--- | :--- | :--- |
+| **Community Admin** | `admin@communityhero.net` | `password123` | **Akshay Dhongade**: Admin of *Green Park Society* and *Ward 12* with 1250 XP, 4 badges, and full moderation controls. |
+| **Citizen** | `citizen@communityhero.net` | `password123` | **Priya Sharma**: Active resident of *Green Park Society* with 480 XP and 2 badges. |
+| **Resolver** | `resolver@communityhero.net` | `password123` | **Rohan Patil**: Municipal technician with 920 XP, *Problem Solver* badge, and permission to update resolved issues. |
+| **Authority** | `authority@communityhero.net` | `password123` | **Dr. Suresh Mehta**: Ward 12 Commissioner with 1500 XP, authority audit controls, and *Civic Hero* status. |
+
+> [!TIP]
+> **Dynamic Mock Data Mapping**: When you log in with any of these hackathon emails, the app automatically clones their rich mock statistics, activities, and communities onto your active session. After logging in, navigate to **Settings** -> **Preferences** tab and click **"Reset & Seed Sandbox Database"**. This purges the database and links all pre-seeded issues, comments, and notifications directly to your active Firebase UID!
+

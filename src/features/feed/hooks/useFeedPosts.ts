@@ -226,6 +226,16 @@ export function useFeedPosts(currentUser: User | null) {
     setPosts(prev => [newPost, ...prev]);
   }, []);
 
+  // Update a post locally (when an issue is updated)
+  const updatePostLocally = useCallback((postId: string, updates: Partial<FeedPost>) => {
+    setPosts(prev => prev.map(p => p.id === postId ? { ...p, ...updates } : p));
+  }, []);
+
+  // Delete a post locally (when an issue is deleted)
+  const deletePostLocally = useCallback((postId: string) => {
+    setPosts(prev => prev.filter(p => p.id !== postId));
+  }, []);
+
   return {
     posts,
     loading,
@@ -241,6 +251,8 @@ export function useFeedPosts(currentUser: User | null) {
     addComment,
     editComment,
     deleteComment,
-    addNewPost
+    addNewPost,
+    updatePostLocally,
+    deletePostLocally
   };
 }

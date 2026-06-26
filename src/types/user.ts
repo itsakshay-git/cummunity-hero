@@ -32,6 +32,20 @@ export interface User {
   longestStreak?: number;
   totalVerifications?: number;
   totalCommunities?: number;
+  city?: string;
+  district?: string;
+  state?: string;
+}
+
+export interface Notification {
+  id: string;
+  userId: string;
+  title: string;
+  body: string;
+  type: 'NEW_ISSUE' | 'STATUS_CHANGE' | 'MEMBER_REQUEST' | 'ROLE_PROMOTED';
+  targetId: string;
+  isRead: boolean;
+  createdAt: string;
 }
 
 export interface UserActivity {

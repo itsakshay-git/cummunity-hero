@@ -18,7 +18,7 @@ export const CommentsTab: React.FC<CommentsTabProps> = ({
 }) => {
   return (
     <div className="space-y-4">
-      <h3 className="text-sm font-black text-slate-900">Comments Posted ({comments.length})</h3>
+      <h3 className="text-sm font-black text-slate-900 dark:text-slate-100">Comments Posted ({comments.length})</h3>
       <div className="space-y-3">
         {comments.map(comment => {
           const resolvedIssueId = comment.issueId || (comment.postId?.startsWith('post_') ? comment.postId.replace('post_', '') : comment.postId);
@@ -26,33 +26,33 @@ export const CommentsTab: React.FC<CommentsTabProps> = ({
           const linkedCommunity = communities.find(c => c.id === comment.communityId);
 
           return (
-            <div key={comment.id} className="p-4 bg-slate-50/50 border border-slate-200 rounded-2xl space-y-2">
+            <div key={comment.id} className="p-4 bg-slate-50/50 dark:bg-slate-950/20 border border-slate-200/60 dark:border-slate-800 rounded-xl space-y-2">
               {linkedIssue ? (
                 <div 
                   onClick={() => onSelectIssue(linkedIssue.id)}
-                  className="text-[10px] text-emerald-600 font-bold hover:underline cursor-pointer flex items-center gap-1 w-fit"
+                  className="text-[10px] text-emerald-600 dark:text-emerald-500 font-bold hover:underline cursor-pointer flex items-center gap-1 w-fit"
                 >
                   <span>On incident: {linkedIssue.title}</span>
                 </div>
               ) : linkedCommunity ? (
                 <div 
                   onClick={() => onNavigate('communities')}
-                  className="text-[10px] text-indigo-600 font-bold hover:underline cursor-pointer flex items-center gap-1 w-fit"
+                  className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold hover:underline cursor-pointer flex items-center gap-1 w-fit"
                 >
                   <span>On community space: {linkedCommunity.name}</span>
                 </div>
               ) : null}
-              <p className="text-xs text-slate-800 leading-normal font-medium bg-white px-3.5 py-2.5 rounded-xl border border-slate-100 shadow-sm">
+              <p className="text-xs text-slate-800 dark:text-slate-200 leading-normal font-medium bg-white dark:bg-slate-900 px-3.5 py-2.5 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm">
                 {comment.body}
               </p>
-              <span className="block text-[9px] font-mono text-slate-400">
+              <span className="block text-[9px] font-mono text-slate-400 dark:text-slate-500">
                 {new Date(comment.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
               </span>
             </div>
           );
         })}
         {comments.length === 0 && (
-          <p className="text-xs text-slate-500 italic">You haven't posted any comments yet.</p>
+          <p className="text-xs text-slate-500 dark:text-slate-450 italic">You haven't posted any comments yet.</p>
         )}
       </div>
     </div>

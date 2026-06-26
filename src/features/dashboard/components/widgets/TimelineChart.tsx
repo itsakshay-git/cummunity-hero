@@ -6,19 +6,19 @@ interface TimelineChartProps {
 
 export const TimelineChart: React.FC<TimelineChartProps> = ({ timelineData }) => {
   return (
-    <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm space-y-4">
+    <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
       <div>
-        <h3 className="font-extrabold text-slate-950 text-sm">Resolution Timeline</h3>
-        <p className="text-[10px] text-slate-400">Comparison of newly logged incidents vs. resolutions resolved</p>
+        <h3 className="font-extrabold text-slate-950 dark:text-slate-100 text-sm">Resolution Timeline</h3>
+        <p className="text-[10px] text-slate-400 dark:text-slate-500">Comparison of newly logged incidents vs. resolutions resolved</p>
       </div>
 
       <div className="relative h-44 w-full">
         {/* SVG Plotting Frame */}
         <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
           {/* Grid Lines */}
-          <line x1="0" y1="25" x2="100" y2="25" stroke="#F1F5F9" strokeWidth="0.5" />
-          <line x1="0" y1="50" x2="100" y2="50" stroke="#F1F5F9" strokeWidth="0.5" />
-          <line x1="0" y1="75" x2="100" y2="75" stroke="#F1F5F9" strokeWidth="0.5" />
+          <line x1="0" y1="25" x2="100" y2="25" stroke="currentColor" strokeWidth="0.5" className="text-slate-100 dark:text-slate-800" />
+          <line x1="0" y1="50" x2="100" y2="50" stroke="currentColor" strokeWidth="0.5" className="text-slate-100 dark:text-slate-800" />
+          <line x1="0" y1="75" x2="100" y2="75" stroke="currentColor" strokeWidth="0.5" className="text-slate-100 dark:text-slate-800" />
           
           {/* Reported Area path (Emerald) */}
           <path
@@ -100,7 +100,7 @@ export const TimelineChart: React.FC<TimelineChartProps> = ({ timelineData }) =>
         <div className="absolute inset-0 flex justify-between pointer-events-none text-[8px] font-mono text-slate-400 pt-36">
           {timelineData.map((d, i) => (
             <div key={i} className="flex flex-col items-center w-8 text-center">
-              <span className="font-bold text-slate-700">{d.month}</span>
+              <span className="font-bold text-slate-700 dark:text-slate-350">{d.month}</span>
             </div>
           ))}
         </div>
@@ -108,11 +108,11 @@ export const TimelineChart: React.FC<TimelineChartProps> = ({ timelineData }) =>
 
       {/* Chart Legends */}
       <div className="flex items-center justify-center space-x-6 text-xs pt-1">
-        <div className="flex items-center space-x-1.5 font-semibold text-slate-700">
+        <div className="flex items-center space-x-1.5 font-semibold text-slate-700 dark:text-slate-300">
           <span className="w-3 h-3 bg-emerald-500 rounded-full inline-block"></span>
           <span>Reported Incidents</span>
         </div>
-        <div className="flex items-center space-x-1.5 font-semibold text-slate-700">
+        <div className="flex items-center space-x-1.5 font-semibold text-slate-700 dark:text-slate-300">
           <span className="w-3 h-1.5 border-t-2 border-dashed border-indigo-500 inline-block"></span>
           <span>Resolved Audits</span>
         </div>

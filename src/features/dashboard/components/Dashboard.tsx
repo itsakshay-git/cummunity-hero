@@ -1,12 +1,13 @@
 import React from 'react';
 import { Activity, MapPin } from 'lucide-react';
-import { Issue, Community, IssueCategory } from '../../../types';
+import { Issue, Community, IssueCategory, User } from '../../../types';
 import MetricCards from './widgets/MetricCards';
 import AIInsightsCard from './widgets/AIInsightsCard';
 import HealthGauge from './widgets/HealthGauge';
 import CategoryChart from './widgets/CategoryChart';
 import TimelineChart from './widgets/TimelineChart';
 import UrgentIssues from './widgets/UrgentIssues';
+import { getDistanceMeters } from '../../../lib/geoUtils';
 
 interface DashboardProps {
   issues: Issue[];
@@ -15,6 +16,8 @@ interface DashboardProps {
   onNavigate: (tab: string) => void;
   selectedCommunityId: string;
   setSelectedCommunityId: (id: string) => void;
+  userCoords?: { lat: number; lng: number } | null;
+  currentUser?: User | null;
 }
 
 export default function Dashboard({ 
@@ -23,13 +26,47 @@ export default function Dashboard({
   onSelectIssue, 
   onNavigate,
   selectedCommunityId,
-  setSelectedCommunityId
+  setSelectedCommunityId,
+  userCoords,
+  currentUser
 }: DashboardProps) {
 
-  // Filter issues based on community selection
-  const filteredIssues = selectedCommunityId === 'all' 
-    ? issues 
-    : issues.filter(i => i.communityId === selectedCommunityId);
+  // Sort communities by distance to userCoords if userCoords is available
+  const sortedCommunities = React.useMemo(() => {
+    if (!userCoords) return communities;
+    return [...communities].sort((a, b) => {
+      const distA = getDistanceMeters(userCoords.lat, userCoords.lng, a.latitude, a.longitude);
+      const distB = getDistanceMeters(userCoords.lat, userCoords.lng, b.latitude, b.longitude);
+      return distA - distB;
+    });
+  }, [communities, userCoords]);
+
+  // Filter issues based on community selection and proximity scopes
+  const filteredIssues = React.useMemo(() => {
+    if (selectedCommunityId === 'nearby_5') {
+      if (!userCoords) return issues;
+      return issues.filter(i => {
+        const dist = getDistanceMeters(userCoords.lat, userCoords.lng, i.latitude, i.longitude);
+        return dist <= 5000; // 5 km
+      });
+    }
+    if (selectedCommunityId === 'nearby_15') {
+      if (!userCoords) return issues;
+      return issues.filter(i => {
+        const dist = getDistanceMeters(userCoords.lat, userCoords.lng, i.latitude, i.longitude);
+        return dist <= 15000; // 15 km
+      });
+    }
+    if (selectedCommunityId === 'city') {
+      const userCity = currentUser?.city || 'Chandrapur';
+      return issues.filter(i => i.city?.toLowerCase() === userCity.toLowerCase());
+    }
+    if (selectedCommunityId === 'all') {
+      return issues;
+    }
+    // Otherwise filter by specific community ID
+    return issues.filter(i => i.communityId === selectedCommunityId);
+  }, [selectedCommunityId, issues, userCoords, currentUser]);
 
   // Compute metrics
   const totalReported = filteredIssues.length;
@@ -56,16 +93,22 @@ export default function Dashboard({
 
   // Dynamic Community Health Calculations for detailed breakdown
   const getCommunityHealthBreakdown = () => {
-    if (selectedCommunityId === 'all') {
+    if (selectedCommunityId === 'all' || selectedCommunityId === 'nearby_5' || selectedCommunityId === 'nearby_15' || selectedCommunityId === 'city') {
       const avgReputation = Math.round(communities.reduce((acc, c) => acc + c.reputationScore, 0) / communities.length);
+      
+      let scopeLabel = "District";
+      if (selectedCommunityId === 'nearby_5') scopeLabel = "Proximity (5km)";
+      else if (selectedCommunityId === 'nearby_15') scopeLabel = "Proximity (15km)";
+      else if (selectedCommunityId === 'city') scopeLabel = "My Location";
+
       return {
         overall: avgReputation,
         infrastructure: 82,
         participation: 76,
         resolution: resolutionRate,
         efficiencyLabel: "Optimal",
-        status: "Good District Standing",
-        description: "Across all communities, local audits indicate healthy citizen engagement. Minor waste coordination backlogs exist."
+        status: `${scopeLabel} Active`,
+        description: "Across the selected scope bounds, local audits indicate active community participation and healthy verification rates."
       };
     }
 
@@ -96,15 +139,20 @@ export default function Dashboard({
     const topCat = categoryData[0]?.count > 0 ? categoryData[0].name : "General Audits";
     const criticalCount = filteredIssues.filter(i => i.severity === 'Critical' && i.status !== 'RESOLVED').length;
 
-    if (selectedCommunityId === 'all') {
+    if (selectedCommunityId === 'all' || selectedCommunityId === 'nearby_5' || selectedCommunityId === 'nearby_15' || selectedCommunityId === 'city') {
+      let scopeTitle = "District Insights";
+      if (selectedCommunityId === 'nearby_5') scopeTitle = "Hyperlocal Insights (5km)";
+      else if (selectedCommunityId === 'nearby_15') scopeTitle = "Proximity Insights (15km)";
+      else if (selectedCommunityId === 'city') scopeTitle = "My Location Insights";
+
       return {
-        title: "Consolidated District Insights",
-        content: `Civic resolution currently stands at ${resolutionRate}%. Analysis shows "${topCat}" is the primary active issue category. A ${criticalCount > 0 ? `high concentration of ${criticalCount} critical hazard(s)` : 'minimal rate of safety hazards'} is noted near key junctions. Multi-community drives are recommended to clear backlogs.`,
+        title: scopeTitle,
+        content: `Civic resolution across this scope stands at ${resolutionRate}%. The category "${topCat}" is currently the primary reported issue. A total of ${criticalCount} critical unresolved hazard(s) are active in this zone. Proximity-based verification campaigns are recommended.`,
         health: `${healthData.overall}/100`,
         alert: criticalCount > 0 
-          ? `${criticalCount} high-severity public hazards require immediate mobilization.` 
-          : "District is clear of critical public safety emergency blocks. Keep reporting!",
-        badge: "District Master"
+          ? `${criticalCount} high-severity public hazards require immediate attention.` 
+          : "Nearby scope is clear of critical public safety emergency blocks. Keep reporting!",
+        badge: selectedCommunityId === 'nearby_5' ? "Hyperlocal Hub" : "District Master"
       };
     }
 
@@ -139,14 +187,14 @@ export default function Dashboard({
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(16,185,129,0.15),rgba(255,255,255,0))]" />
         <div className="relative z-10 space-y-1">
           <div className="flex items-center space-x-2">
-            <span className="bg-emerald-500/20 text-emerald-400 text-[10px] uppercase font-bold tracking-widest px-2.5 py-1 rounded-full border border-emerald-500/30">
-              Active Phase 9
+            <span className="text-[10px] text-slate-400 font-mono flex items-center gap-1.5">
+              <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse inline-block"></span>
+              Live Sync Active
             </span>
-            <span className="text-[10px] text-slate-400 font-mono">Live Sync</span>
           </div>
           <h1 className="text-xl md:text-2xl font-black font-sans tracking-tight text-white flex items-center gap-2">
             <Activity className="w-5 h-5 text-emerald-400" />
-            Civic Command Center
+            Community Action Hub
           </h1>
           <p className="text-xs text-slate-400">
             Real-time hyperlocal incident auditing, community performance scores, and neighborhood health indices.
@@ -162,12 +210,21 @@ export default function Dashboard({
               id="dashboard-community-select"
               value={selectedCommunityId} 
               onChange={(e) => setSelectedCommunityId(e.target.value)}
-              className="text-xs font-bold text-slate-100 bg-transparent border-none outline-none cursor-pointer focus:ring-0 pr-6 pt-0.5"
+              className="text-xs font-bold text-slate-100 bg-slate-800 border-none outline-none cursor-pointer focus:ring-0 pr-6 pt-0.5"
             >
-              <option value="all" className="bg-slate-900 text-white">Global (All Communities)</option>
-              {communities.map(c => (
-                <option key={c.id} value={c.id} className="bg-slate-900 text-white">{c.name}</option>
-              ))}
+              <optgroup label="Hyperlocal Proximity" className="bg-slate-900 text-slate-405 text-[10px]">
+                <option value="nearby_5" className="bg-slate-900 text-white">Within 5 km</option>
+                <option value="nearby_15" className="bg-slate-900 text-white">Within 15 km</option>
+                <option value="city" className="bg-slate-900 text-white">My Location</option>
+              </optgroup>
+              <optgroup label="Specific Community Spaces" className="bg-slate-900 text-slate-405 text-[10px]">
+                {sortedCommunities.map(c => (
+                  <option key={c.id} value={c.id} className="bg-slate-900 text-white">{c.name}</option>
+                ))}
+              </optgroup>
+              <optgroup label="Global Scope" className="bg-slate-900 text-slate-405 text-[10px]">
+                <option value="all" className="bg-slate-900 text-white">Global (All Districts)</option>
+              </optgroup>
             </select>
           </div>
         </div>
@@ -211,6 +268,7 @@ export default function Dashboard({
         totalIssuesCount={issues.length}
         onSelectIssue={onSelectIssue}
         onNavigate={onNavigate}
+        userCoords={userCoords}
       />
     </div>
   );

@@ -25,19 +25,19 @@ export const SavedTab: React.FC<SavedTabProps> = ({
 
   return (
     <div className="space-y-4">
-      <h3 className="text-sm font-black text-slate-900">Saved Items ({savedPosts.length})</h3>
+      <h3 className="text-sm font-black text-slate-900 dark:text-slate-100">Saved Items ({savedPosts.length})</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {savedPosts.map(post => (
           <div 
             key={post.id} 
             onClick={() => handleSavedItemClick(post)}
-            className="p-4 bg-slate-50/50 hover:bg-slate-50 border border-slate-200 rounded-2xl flex gap-3 cursor-pointer transition-colors relative"
+            className="p-4 bg-slate-50/50 dark:bg-slate-950/20 hover:bg-slate-50 dark:hover:bg-slate-800/60 border border-slate-200/60 dark:border-slate-800 rounded-xl flex gap-3 cursor-pointer transition-colors relative"
           >
             {post.imageUrl && (
               <img 
                 src={post.imageUrl} 
                 alt={post.title} 
-                className="w-16 h-16 rounded-xl object-cover border border-slate-200 flex-shrink-0"
+                className="w-16 h-16 rounded-lg object-cover border border-slate-200/60 dark:border-slate-800 flex-shrink-0"
               />
             )}
             <div className="min-w-0 flex-grow">
@@ -50,20 +50,20 @@ export const SavedTab: React.FC<SavedTabProps> = ({
                     e.stopPropagation();
                     if (onToggleSave) onToggleSave(post.id);
                   }}
-                  className="text-slate-400 hover:text-amber-500 transition-colors p-1 rounded-lg bg-white shadow-sm border border-slate-100 cursor-pointer"
+                  className="text-slate-400 hover:text-amber-500 transition-colors p-1 rounded-lg bg-white dark:bg-slate-900 shadow-sm border border-slate-100 dark:border-slate-800 cursor-pointer"
                 >
                   <Bookmark className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
                 </button>
               </div>
-              <h4 className="font-extrabold text-slate-900 text-xs block truncate mt-1.5">{post.title}</h4>
-              <p className="text-[10px] text-slate-500 line-clamp-2 mt-0.5 font-medium leading-normal">
+              <h4 className="font-extrabold text-slate-900 dark:text-slate-100 text-xs block truncate mt-1.5">{post.title}</h4>
+              <p className="text-[10px] text-slate-500 dark:text-slate-350 line-clamp-2 mt-0.5 font-medium leading-normal">
                 {post.body}
               </p>
-              <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-100">
+              <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <Badge variant="status" value={post.status || 'Active'}>
-                  {post.status || 'Active'}
+                  {(post.status || 'Active').replace(/_/g, ' ')}
                 </Badge>
-                <span className="text-[8px] font-mono text-slate-400">
+                <span className="text-[8px] font-mono text-slate-400 dark:text-slate-505">
                   Saved on {new Date(post.createdAt).toLocaleDateString()}
                 </span>
               </div>

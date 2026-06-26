@@ -1,3 +1,8 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 import React from 'react';
 
 interface BadgeProps {
@@ -15,40 +20,49 @@ export const Badge: React.FC<BadgeProps> = ({
   colorClass = '',
   className = ''
 }) => {
-  const baseStyle = 'inline-block text-[8px] font-black uppercase font-mono px-2 py-0.5 rounded-full border';
+  const baseStyle = 'inline-flex items-center gap-1.5 text-[8px] font-bold font-mono tracking-wider uppercase px-2 py-0.5 rounded-md border';
   
   let computedStyle = '';
+  let dotColor = '';
 
   if (variant === 'severity') {
     const val = (value || children || '').toString().trim().toLowerCase();
     if (val === 'critical') {
-      computedStyle = 'bg-red-50 text-red-600 border-red-100';
+      computedStyle = 'bg-rose-50/50 text-rose-600 border-rose-200/50';
+      dotColor = 'bg-rose-500';
     } else if (val === 'high') {
-      computedStyle = 'bg-amber-50 text-amber-600 border-amber-100';
+      computedStyle = 'bg-amber-50/50 text-amber-600 border-amber-200/50';
+      dotColor = 'bg-amber-500';
     } else {
-      computedStyle = 'bg-blue-50 text-blue-600 border-blue-100';
+      computedStyle = 'bg-blue-50/50 text-blue-600 border-blue-200/50';
+      dotColor = 'bg-blue-500';
     }
   } else if (variant === 'status') {
     const val = (value || children || '').toString().trim().toLowerCase();
-    if (val === 'resolved' || val === 'active') {
-      computedStyle = 'bg-emerald-50 text-emerald-700 border-emerald-100';
-    } else if (val === 'verified') {
-      computedStyle = 'bg-teal-50 text-teal-700 border-teal-100';
-    } else if (val === 'in progress') {
-      computedStyle = 'bg-indigo-50 text-indigo-700 border-indigo-100';
+    const cleanVal = val.replace(/_/g, ' ');
+    if (cleanVal === 'resolved') {
+      computedStyle = 'bg-emerald-50/50 text-emerald-700 border-emerald-200/50';
+      dotColor = 'bg-emerald-500';
+    } else if (cleanVal === 'verified' || cleanVal === 'community verified') {
+      computedStyle = 'bg-teal-50/50 text-teal-700 border-teal-200/50';
+      dotColor = 'bg-teal-500';
+    } else if (cleanVal === 'in progress') {
+      computedStyle = 'bg-indigo-50/50 text-indigo-700 border-indigo-200/50';
+      dotColor = 'bg-indigo-500';
     } else {
-      // Reported or others
-      computedStyle = 'bg-slate-100 text-slate-600 border-slate-200';
+      computedStyle = 'bg-slate-50 text-slate-500 border-slate-200/80';
+      dotColor = 'bg-slate-400';
     }
   } else if (variant === 'category') {
-    computedStyle = 'bg-slate-100 text-slate-600 border-slate-150';
+    computedStyle = 'bg-slate-50 text-slate-500 border-slate-200/80';
   } else {
     // Custom color classes
-    computedStyle = colorClass || 'bg-slate-50 text-slate-600 border-slate-200';
+    computedStyle = colorClass || 'bg-slate-50 text-slate-500 border-slate-200/80';
   }
 
   return (
     <span className={`${baseStyle} ${computedStyle} ${className}`}>
+      {dotColor && <span className={`w-1 h-1 rounded-full ${dotColor}`} />}
       {children}
     </span>
   );

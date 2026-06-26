@@ -1,12 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc, setDoc, collection, getDocs, writeBatch, updateDoc, deleteDoc } from 'firebase/firestore';
 import { auth, db } from '../services/firebase/firebaseClient';
-import { mockUsers, mockCommunities, mockIssues, mockVerifications, mockComments, mockActivities } from '../lib/mockData';
-import { User, Issue, Community, IssueVerification, UserRole, IssueStatus, Comment, UserActivity } from '../types';
+import { mockUsers, mockCommunities, mockIssues, mockVerifications, mockComments, mockActivities, mockFeedPosts } from '../lib/mockData';
+import { User, Issue, Community, IssueVerification, UserRole, IssueStatus, Comment, UserActivity, Notification } from '../types';
 import { useFeedPosts } from '../features/feed/hooks/useFeedPosts';
 import { getLevelInfo } from '../features/feed/utils';
 import { communitiesService } from '../features/communities/services/communitiesService';
+import { getDistanceMeters } from '../lib/geoUtils';
+
 
 // Helper to recursively sanitize objects for Firestore by converting/stripping undefined values
 const cleanUndefined = (obj: any): any => {
@@ -31,31 +33,63 @@ const cleanUndefined = (obj: any): any => {
 const getInitialStateFromHash = () => {
   const hash = window.location.hash;
   if (!hash || hash === '#/') {
-    return { tab: 'feed', issueId: null, communityId: 'all' };
+    return { tab: 'feed', issueId: null, communityId: 'nearby_5', viewingUserId: null };
   }
   const [path, queryString] = hash.slice(2).split('?');
   const params = new URLSearchParams(queryString || '');
   const id = params.get('id');
   
   if (path === 'issue-details') {
-    return { tab: 'issue-details', issueId: id, communityId: 'all' };
+    return { tab: 'issue-details', issueId: id, communityId: 'all', viewingUserId: null };
   }
   if (path === 'communities') {
-    return { tab: 'communities', issueId: null, communityId: id || 'all' };
+    return { tab: 'communities', issueId: null, communityId: id || 'all', viewingUserId: null };
+  }
+  if (path === 'profile') {
+    const userId = params.get('userId') || params.get('id');
+    return { tab: 'profile', issueId: null, communityId: 'all', viewingUserId: userId };
   }
   
-  const validPaths = ['feed', 'dashboard', 'report', 'map-explorer', 'issues', 'leaderboard', 'profile', 'challenges'];
+  const validPaths = ['feed', 'dashboard', 'report', 'map-explorer', 'issues', 'leaderboard', 'challenges', 'settings'];
   if (validPaths.includes(path)) {
-    return { tab: path, issueId: null, communityId: 'all' };
+    const defaultCommunityId = (path === 'issues' || path === 'dashboard') ? 'city' : 'nearby_5';
+    return { tab: path, issueId: null, communityId: defaultCommunityId, viewingUserId: null };
   }
   
-  return { tab: '404', issueId: null, communityId: 'all' };
+  return { tab: '404', issueId: null, communityId: 'all', viewingUserId: null };
 };
 
 export function useAppState() {
   const [appStarted, setAppStarted] = useState(false);
   const [activeTab, setActiveTab] = useState(() => getInitialStateFromHash().tab);
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(() => getInitialStateFromHash().issueId);
+  const [viewingUserId, setViewingUserId] = useState<string | null>(() => getInitialStateFromHash().viewingUserId);
+
+  const [theme, setThemeState] = useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('theme');
+    if (saved === 'dark' || saved === 'light') return saved;
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return 'dark';
+    }
+    return 'light';
+  });
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+  }, [theme]);
+
+  const toggleTheme = useCallback(() => {
+    setThemeState(prev => {
+      const next = prev === 'light' ? 'dark' : 'light';
+      localStorage.setItem('theme', next);
+      return next;
+    });
+  }, []);
 
   // Core application states (simulated local DB collections)
   const [users, setUsers] = useState<User[]>(mockUsers);
@@ -70,10 +104,48 @@ export function useAppState() {
   const [currentRole, setCurrentRole] = useState<UserRole>('Citizen');
   const [selectedCommunityId, setSelectedCommunityId] = useState<string>(() => getInitialStateFromHash().communityId);
   
+  // Hyperlocal filter and notification states
+  const [activeLocationFilter, setActiveLocationFilter] = useState<string>('My Location');
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+
   // Auth UI Controls
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalRole, setAuthModalRole] = useState<UserRole>('Citizen');
   const [authLoading, setAuthLoading] = useState(true);
+
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [syncStatus, setSyncStatus] = useState<string | null>(null);
+  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [gpsCoords, setGpsCoords] = useState<{ lat: number; lng: number } | null>(null);
+
+  const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
+    pune: { lat: 18.5204, lng: 73.8567 },
+    mumbai: { lat: 19.0760, lng: 72.8777 },
+    bangalore: { lat: 12.9716, lng: 77.5946 },
+    delhi: { lat: 28.6139, lng: 77.2090 },
+    chennai: { lat: 13.0827, lng: 80.2707 },
+    chandrapur: { lat: 19.9615, lng: 79.2961 }
+  };
+
+  const gpsRequested = useRef(false);
+
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      setSyncStatus('Back online. Syncing changes...');
+      setTimeout(() => setSyncStatus(null), 3000);
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+    };
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // Lifted feed posts hook
   const {
@@ -89,16 +161,19 @@ export function useAppState() {
     addComment,
     editComment,
     deleteComment,
-    addNewPost
+    addNewPost,
+    updatePostLocally,
+    deletePostLocally
   } = useFeedPosts(currentUser);
 
   // Listen and sync hash routing
   useEffect(() => {
     const handleHashChange = () => {
-      const { tab, issueId, communityId } = getInitialStateFromHash();
+      const { tab, issueId, communityId, viewingUserId } = getInitialStateFromHash();
       setActiveTab(prev => (prev !== tab ? tab : prev));
       setSelectedIssueId(prev => (prev !== issueId ? issueId : prev));
       setSelectedCommunityId(prev => (prev !== communityId ? communityId : prev));
+      setViewingUserId(prev => (prev !== viewingUserId ? viewingUserId : prev));
     };
 
     window.addEventListener('hashchange', handleHashChange);
@@ -113,63 +188,105 @@ export function useAppState() {
     };
   }, []);
 
+  const saveUserUidMapping = async (email: string, uid: string) => {
+    try {
+      const mappingRef = doc(db, 'metadata', 'user_mappings');
+      const cleanEmailKey = email.toLowerCase().replace(/\./g, '_');
+      await setDoc(mappingRef, { [cleanEmailKey]: uid }, { merge: true });
+    } catch (err) {
+      console.warn('Failed to save user UID mapping:', err);
+    }
+  };
+
   // Listen to Firebase Auth state
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
+        if (firebaseUser.email) {
+          saveUserUidMapping(firebaseUser.email, firebaseUser.uid);
+        }
         try {
           const userDocRef = doc(db, 'users', firebaseUser.uid);
-          const userDocSnap = await getDoc(userDocRef);
+          const userDocSnap = await Promise.race([
+            getDoc(userDocRef),
+            new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Firestore Fetch Timeout')), 1500))
+          ]);
           if (userDocSnap.exists()) {
             const profile = userDocSnap.data() as User;
             setCurrentUser(profile);
             setCurrentRole(profile.role);
             setAppStarted(true);
           } else {
-            // Profile fallback setup
-            const defaultProfile: User = {
-              id: firebaseUser.uid,
-              name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Civic Hero',
-              email: firebaseUser.email || 'sandbox@communityhero.net',
-              photoUrl: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(firebaseUser.uid)}`,
-              role: 'Citizen',
-              joinedCommunities: ['comm_1'],
-              reputationScore: 100,
-              points: 100,
-              reportsCreated: 0,
-              reportsVerified: 0,
-              reportsResolved: 0,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            };
+            // Profile fallback setup - check if there's a mock user for this email
+            const matchedMockUser = mockUsers.find(
+              (u) => u.email.toLowerCase() === (firebaseUser.email || '').toLowerCase()
+            );
+
+            const defaultProfile: User = matchedMockUser
+              ? {
+                  ...matchedMockUser,
+                  id: firebaseUser.uid
+                }
+              : {
+                  id: firebaseUser.uid,
+                  name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Civic Hero',
+                  email: firebaseUser.email || 'sandbox@communityhero.net',
+                  photoUrl: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(firebaseUser.uid)}`,
+                  role: 'Citizen',
+                  joinedCommunities: ['comm_1'],
+                  reputationScore: 100,
+                  points: 100,
+                  reportsCreated: 0,
+                  reportsVerified: 0,
+                  reportsResolved: 0,
+                  city: 'Chandrapur',
+                  district: 'Chandrapur',
+                  state: 'Maharashtra',
+                  location: 'Chandrapur, Maharashtra',
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                };
             try {
               await setDoc(userDocRef, cleanUndefined(defaultProfile));
             } catch (writeErr) {
               console.warn('Could not write user profile to Firestore (using local fallback):', writeErr);
             }
             setCurrentUser(defaultProfile);
-            setCurrentRole('Citizen');
+            setCurrentRole(defaultProfile.role);
             setAppStarted(true);
           }
         } catch (e) {
           console.error('Error fetching/creating user profile from Firestore:', e);
-          const fallbackProfile: User = {
-            id: firebaseUser.uid,
-            name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Civic Hero',
-            email: firebaseUser.email || 'sandbox@communityhero.net',
-            photoUrl: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(firebaseUser.uid)}`,
-            role: 'Citizen',
-            joinedCommunities: ['comm_1'],
-            reputationScore: 100,
-            points: 100,
-            reportsCreated: 0,
-            reportsVerified: 0,
-            reportsResolved: 0,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
+          const matchedMockUser = mockUsers.find(
+            (u) => u.email.toLowerCase() === (firebaseUser.email || '').toLowerCase()
+          );
+
+          const fallbackProfile: User = matchedMockUser
+            ? {
+                ...matchedMockUser,
+                id: firebaseUser.uid
+              }
+            : {
+                id: firebaseUser.uid,
+                name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Civic Hero',
+                email: firebaseUser.email || 'sandbox@communityhero.net',
+                photoUrl: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(firebaseUser.uid)}`,
+                role: 'Citizen',
+                joinedCommunities: ['comm_1'],
+                reputationScore: 100,
+                points: 100,
+                reportsCreated: 0,
+                reportsVerified: 0,
+                reportsResolved: 0,
+                city: 'Chandrapur',
+                district: 'Chandrapur',
+                state: 'Maharashtra',
+                location: 'Chandrapur, Maharashtra',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              };
           setCurrentUser(fallbackProfile);
-          setCurrentRole('Citizen');
+          setCurrentRole(fallbackProfile.role);
           setAppStarted(true);
         }
       } else {
@@ -191,6 +308,162 @@ export function useAppState() {
       });
     }
   }, [currentUser]);
+
+  // Fetch & Seed Users from Firestore
+  useEffect(() => {
+    const fetchAndSeedUsers = async () => {
+      if (!appStarted) return;
+      try {
+        const querySnapshot = await getDocs(collection(db, 'users'));
+        if (querySnapshot.empty) {
+          console.log('Seeding default users into Firestore...');
+          const batch = writeBatch(db);
+          mockUsers.forEach((u) => {
+            batch.set(doc(db, 'users', u.id), u);
+          });
+          await batch.commit();
+          setUsers(mockUsers);
+        } else {
+          const loaded: User[] = [];
+          querySnapshot.forEach((doc) => {
+            loaded.push(doc.data() as User);
+          });
+          setUsers(prev => {
+            const merged = [...loaded];
+            prev.forEach(u => {
+              if (!merged.find(m => m.id === u.id)) {
+                merged.push(u);
+              }
+            });
+            return merged;
+          });
+        }
+      } catch (err) {
+        console.warn('Could not load/seed users from Firestore (using local fallback mock data):', err);
+      }
+    };
+
+    fetchAndSeedUsers();
+  }, [appStarted]);
+
+  // Fetch & Seed Feed Posts from Firestore
+  useEffect(() => {
+    const fetchAndSeedFeedPosts = async () => {
+      if (!appStarted) return;
+      try {
+        const querySnapshot = await getDocs(collection(db, 'feed_posts'));
+        if (querySnapshot.empty) {
+          console.log('Seeding default feed posts into Firestore...');
+          const batch = writeBatch(db);
+          mockFeedPosts.forEach((post) => {
+            batch.set(doc(db, 'feed_posts', post.id), post);
+          });
+          await batch.commit();
+        }
+      } catch (err) {
+        console.warn('Could not seed feed posts in Firestore:', err);
+      }
+    };
+    fetchAndSeedFeedPosts();
+  }, [appStarted]);
+
+  // Fetch & Seed Activities from Firestore
+  useEffect(() => {
+    const fetchAndSeedActivities = async () => {
+      if (!appStarted) return;
+      try {
+        const querySnapshot = await getDocs(collection(db, 'activities'));
+        if (querySnapshot.empty) {
+          console.log('Seeding default activities into Firestore...');
+          const batch = writeBatch(db);
+          mockActivities.forEach((act) => {
+            batch.set(doc(db, 'activities', act.id), act);
+          });
+          await batch.commit();
+          setActivities(mockActivities);
+        } else {
+          const loaded: UserActivity[] = [];
+          querySnapshot.forEach((doc) => {
+            loaded.push(doc.data() as UserActivity);
+          });
+          loaded.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+          setActivities(loaded);
+        }
+      } catch (err) {
+        console.warn('Could not load/seed activities from Firestore:', err);
+        setActivities(mockActivities);
+      }
+    };
+    fetchAndSeedActivities();
+  }, [appStarted]);
+
+  // Fetch & Seed Notifications from Firestore
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      if (!appStarted || !currentUser) return;
+      try {
+        const querySnapshot = await getDocs(collection(db, 'notifications'));
+        const loaded: Notification[] = [];
+        querySnapshot.forEach((doc) => {
+          const data = doc.data() as Notification;
+          if (data.userId === currentUser.id) {
+            loaded.push(data);
+          }
+        });
+
+        // Seed 3 welcome alerts for the logged-in sandbox user if none exist
+        if (loaded.length === 0) {
+          console.log('Seeding default notifications for current user...');
+          const batch = writeBatch(db);
+          const welcomeNotifs: Notification[] = [
+            {
+              id: `notif_${currentUser.id}_welcome`,
+              userId: currentUser.id,
+              title: 'Welcome to Community Hero!',
+              body: 'Thank you for joining our social civic platform. Report issues, cast verifications, and cooperate with neighbors to earn reputation!',
+              type: 'ROLE_PROMOTED',
+              targetId: currentUser.id,
+              isRead: false,
+              createdAt: new Date(Date.now() - 3600000 * 24).toISOString() // 1 day ago
+            },
+            {
+              id: `notif_${currentUser.id}_leakage`,
+              userId: currentUser.id,
+              title: 'Water Leakage Alert near Block C',
+              body: 'A Water Leakage report in Green Park Society has been marked IN_PROGRESS by resolver Rohan Patil.',
+              type: 'STATUS_CHANGE',
+              targetId: 'issue_1',
+              isRead: false,
+              createdAt: new Date(Date.now() - 3600000 * 4).toISOString() // 4 hours ago
+            },
+            {
+              id: `notif_${currentUser.id}_pothole`,
+              userId: currentUser.id,
+              title: 'Critical Pothole reported in Shivajinagar',
+              body: 'A new Critical Pothole has been reported on High Street road. Drive safely!',
+              type: 'NEW_ISSUE',
+              targetId: 'issue_4',
+              isRead: false,
+              createdAt: new Date(Date.now() - 3600000 * 2).toISOString() // 2 hours ago
+            }
+          ];
+
+          welcomeNotifs.forEach((n) => {
+            batch.set(doc(db, 'notifications', n.id), n);
+            loaded.push(n);
+          });
+          await batch.commit();
+        }
+
+        loaded.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+        setNotifications(loaded);
+      } catch (err) {
+        console.warn('Could not load notifications from Firestore:', err);
+      }
+    };
+
+    fetchNotifications();
+  }, [appStarted, currentUser]);
 
   // Fetch & Seed Communities from Firestore
   useEffect(() => {
@@ -373,12 +646,147 @@ export function useAppState() {
     }
   }, [currentUser]);
 
+  useEffect(() => {
+    if (!gpsRequested.current) {
+      gpsRequested.current = true;
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const coords = {
+              lat: position.coords.latitude,
+              lng: position.coords.longitude
+            };
+            setGpsCoords(coords);
+            setUserCoords(coords);
+          },
+          (error) => {
+            console.warn("Geolocation permission denied or failed:", error);
+          }
+        );
+      }
+    }
+  }, []);
+
+  // Sync userCoords and profile city
+  useEffect(() => {
+    if (gpsCoords) {
+      setUserCoords(gpsCoords);
+
+      if (currentUser) {
+        let closestCity = 'Chandrapur';
+        let minDistance = Infinity;
+        
+        const cityCoords: Record<string, { lat: number; lng: number }> = {
+          'Chandrapur': { lat: 19.9615, lng: 79.2961 },
+          'Pune': { lat: 18.5204, lng: 73.8567 },
+          'Mumbai': { lat: 19.0760, lng: 72.8777 },
+          'Bangalore': { lat: 12.9716, lng: 77.5946 },
+          'Delhi': { lat: 28.6139, lng: 77.2090 },
+          'Chennai': { lat: 13.0827, lng: 80.2707 }
+        };
+
+        Object.entries(cityCoords).forEach(([cityName, cCoords]) => {
+          const dist = getDistanceMeters(gpsCoords.lat, gpsCoords.lng, cCoords.lat, cCoords.lng);
+          if (dist < minDistance) {
+            minDistance = dist;
+            closestCity = cityName;
+          }
+        });
+
+        if (currentUser.city.toLowerCase() !== closestCity.toLowerCase()) {
+          const formattedCityName = closestCity.charAt(0).toUpperCase() + closestCity.slice(1);
+          updateUserProfile({
+            city: formattedCityName,
+            location: `${formattedCityName}, Maharashtra`
+          });
+        }
+      }
+    } else {
+      const userCity = (currentUser?.city || 'Chandrapur').toLowerCase();
+      const fallback = CITY_COORDS[userCity] || CITY_COORDS['chandrapur'];
+      setUserCoords(fallback);
+    }
+  }, [currentUser, gpsCoords, updateUserProfile]);
+
   const handleRoleChange = useCallback(async (newRole: UserRole) => {
     setCurrentRole(newRole);
     if (currentUser) {
       await updateUserProfile({ role: newRole });
     }
   }, [currentUser, updateUserProfile]);
+
+  const handleDeleteAccount = useCallback(async () => {
+    if (!currentUser) return { success: false, reason: 'NO_USER' };
+
+    // 1. Guardrail Check: Unresolved Reports
+    const pendingIssues = issues.filter(i => i.reportedBy === currentUser.id && i.status !== 'RESOLVED');
+    if (pendingIssues.length > 0) {
+      return {
+        success: false,
+        reason: 'PENDING_ISSUES',
+        details: pendingIssues.map(i => i.title)
+      };
+    }
+
+    // 2. Guardrail Check: Community Admin Ownership
+    const adminComms = communities.filter(c => c.adminIds.includes(currentUser.id));
+    if (adminComms.length > 0) {
+      const hasOtherMembers = adminComms.some(c => c.memberIds.length > 1);
+      if (hasOtherMembers) {
+        return {
+          success: false,
+          reason: 'ADMIN_COMMUNITIES',
+          details: adminComms.filter(c => c.memberIds.length > 1).map(c => c.name)
+        };
+      } else {
+        return {
+          success: false,
+          reason: 'ONLY_ADMIN',
+          details: adminComms.filter(c => c.memberIds <= 1).map(c => c.name)
+        };
+      }
+    }
+
+    try {
+      const batch = writeBatch(db);
+
+      // Remove from all joined communities' member lists
+      const joinedComms = communities.filter(c => currentUser.joinedCommunities.includes(c.id));
+      joinedComms.forEach(c => {
+        const updatedMembers = c.memberIds.filter(mId => mId !== currentUser.id);
+        const updatedAdmins = c.adminIds.filter(aId => aId !== currentUser.id);
+        batch.update(doc(db, 'communities', c.id), {
+          memberIds: updatedMembers,
+          adminIds: updatedAdmins
+        });
+      });
+
+      // Delete user document in Firestore
+      batch.delete(doc(db, 'users', currentUser.id));
+      await batch.commit();
+
+      // Clear local states
+      setCurrentUser(null);
+      setCurrentRole('Citizen');
+
+      const fbUser = auth.currentUser;
+      if (fbUser) {
+        try {
+          await fbUser.delete();
+        } catch (authErr) {
+          console.warn("Could not delete Auth user directly (requires recent login), signing out instead:", authErr);
+          await signOut(auth);
+        }
+      } else {
+        await signOut(auth);
+      }
+
+      return { success: true };
+    } catch (e: any) {
+      console.error("Error deleting account:", e);
+      return { success: false, reason: 'ERROR', details: e.message || e.toString() };
+    }
+  }, [currentUser, issues, communities]);
 
   const handleStartApp = useCallback((initialRole?: string) => {
     if (initialRole) {
@@ -409,12 +817,24 @@ export function useAppState() {
       supporterCount: 0,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      city: currentUser.city || 'Chandrapur',
+      state: currentUser.state || 'Maharashtra',
       ...newIssueData
     };
+
+    console.log('[handleCreateIssue] New Issue:', newIssue);
+    console.log('[handleCreateIssue] Current User City:', currentUser.city);
 
     setIssues(prev => [newIssue, ...prev]);
 
     try {
+      if (!navigator.onLine) {
+        setSyncStatus('Saved locally. Will sync to database when online...');
+        setTimeout(() => setSyncStatus(null), 4000);
+      } else {
+        setSyncStatus('Publishing report to Firestore...');
+      }
+
       await setDoc(doc(db, 'issues', newId), cleanUndefined(newIssue));
       
       const feedPostId = `post_${newId}`;
@@ -436,12 +856,42 @@ export function useAppState() {
         shareCount: 0,
         saveCount: 0,
         createdAt: newIssue.createdAt,
-        updatedAt: newIssue.updatedAt
+        updatedAt: newIssue.updatedAt,
+        mediaAttachments: newIssue.mediaAttachments
       };
+      console.log('[handleCreateIssue] New Feed Post:', newFeedPost);
       await setDoc(doc(db, 'feed_posts', feedPostId), cleanUndefined(newFeedPost));
       addNewPost(newFeedPost);
-    } catch (e) {
-      console.error('Error saving issue/feed post to Firestore:', e);
+      console.log('[handleCreateIssue] Local feed post added.');
+
+      // Notify matching users in the vicinity
+      const vicinityUsers = users.filter(u => u.city === newIssue.city && u.id !== currentUser.id);
+      console.log('[handleCreateIssue] Vicinity users to notify:', vicinityUsers.length);
+      const notifPromises = vicinityUsers.map(async (u) => {
+        const notifId = `notif_${u.id}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+        const newNotif: Notification = {
+          id: notifId,
+          userId: u.id,
+          title: 'New Incident Reported Nearby',
+          body: `A new ${newIssue.category} issue "${newIssue.title}" has been reported in ${newIssue.city}.`,
+          type: 'NEW_ISSUE',
+          targetId: newId,
+          isRead: false,
+          createdAt: new Date().toISOString()
+        };
+        await setDoc(doc(db, 'notifications', notifId), cleanUndefined(newNotif));
+      });
+      await Promise.all(notifPromises);
+      console.log('[handleCreateIssue] Notifications sent.');
+
+      if (navigator.onLine) {
+        setSyncStatus('Report successfully published!');
+        setTimeout(() => setSyncStatus(null), 2500);
+      }
+    } catch (e: any) {
+      setSyncStatus(null);
+      console.error('[handleCreateIssue] Error saving issue/feed post/notifications to Firestore:', e);
+      alert(`Failed to save report to Firestore: ${e.message || e.toString()}\n\nMake sure your Firebase security rules allow writing to 'issues', 'feed_posts', and 'notifications', and that you have clicked "Bypass Cache & Clear Queue" in Settings if your write queue is exhausted.`);
     }
     
     setCommunities(prevComms => prevComms.map(c => {
@@ -476,7 +926,134 @@ export function useAppState() {
     setActivities(prev => [newActivity, ...prev]);
     setDoc(doc(db, 'activities', activityId), cleanUndefined(newActivity))
       .catch(err => console.warn('Could not save activity to Firestore:', err));
-  }, [currentUser, addNewPost, updateUserProfile]);
+  }, [currentUser, addNewPost, updateUserProfile, users]);
+
+  const handleUpdateIssue = useCallback(async (issueId: string, updatedFields: Partial<Issue>) => {
+    setIssues(prev => prev.map(i => i.id === issueId ? { ...i, ...updatedFields, updatedAt: new Date().toISOString() } : i));
+
+    try {
+      if (!navigator.onLine) {
+        setSyncStatus('Changes saved locally. Will sync to database when online...');
+        setTimeout(() => setSyncStatus(null), 4000);
+      } else {
+        setSyncStatus('Publishing updates to Firestore...');
+      }
+
+      const issueRef = doc(db, 'issues', issueId);
+      await updateDoc(issueRef, cleanUndefined({ ...updatedFields, updatedAt: new Date().toISOString() }));
+
+      const feedPostId = `post_${issueId}`;
+      const feedPostRef = doc(db, 'feed_posts', feedPostId);
+      const postSnap = await getDoc(feedPostRef);
+      if (postSnap.exists()) {
+        const postUpdates: any = {
+          updatedAt: new Date().toISOString(),
+        };
+        if (updatedFields.title !== undefined) postUpdates.title = updatedFields.title;
+        if (updatedFields.description !== undefined) postUpdates.body = updatedFields.description;
+        if (updatedFields.mediaAttachments !== undefined) postUpdates.mediaAttachments = updatedFields.mediaAttachments;
+        if (updatedFields.imageUrl !== undefined) postUpdates.imageUrl = updatedFields.imageUrl;
+        await updateDoc(feedPostRef, cleanUndefined(postUpdates));
+        updatePostLocally(feedPostId, postUpdates);
+      }
+
+      if (navigator.onLine) {
+        setSyncStatus('Report updated successfully!');
+        setTimeout(() => setSyncStatus(null), 2500);
+      }
+    } catch (err: any) {
+      setSyncStatus(null);
+      console.error('Error updating issue in Firestore:', err);
+      alert(`Failed to update report in Firestore: ${err.message || err.toString()}`);
+    }
+  }, [updatePostLocally]);
+
+  const handleDeleteIssue = useCallback(async (issueId: string) => {
+    const targetIssue = issues.find(i => i.id === issueId);
+    if (!targetIssue) return;
+
+    setIssues(prev => prev.filter(i => i.id !== issueId));
+
+    try {
+      if (!navigator.onLine) {
+        setSyncStatus('Report deleted locally. Will sync when online...');
+        setTimeout(() => setSyncStatus(null), 4000);
+      } else {
+        setSyncStatus('Deleting report from Firestore...');
+      }
+
+      await deleteDoc(doc(db, 'issues', issueId));
+
+      const feedPostId = `post_${issueId}`;
+      await deleteDoc(doc(db, 'feed_posts', feedPostId));
+      deletePostLocally(feedPostId);
+
+      const commentsQuery = await getDocs(collection(db, 'comments'));
+      const commentsBatch = writeBatch(db);
+      let deletedCommentsCount = 0;
+      commentsQuery.forEach(docSnap => {
+        const commentData = docSnap.data();
+        if (commentData.issueId === issueId || commentData.postId === feedPostId) {
+          commentsBatch.delete(docSnap.ref);
+          deletedCommentsCount++;
+        }
+      });
+      if (deletedCommentsCount > 0) {
+        await commentsBatch.commit();
+        setComments(prev => prev.filter(c => c.issueId !== issueId && c.postId !== feedPostId));
+      }
+
+      const verificationsQuery = await getDocs(collection(db, 'verifications'));
+      const verificationsBatch = writeBatch(db);
+      let deletedVerificationsCount = 0;
+      verificationsQuery.forEach(docSnap => {
+        const verData = docSnap.data();
+        if (verData.issueId === issueId) {
+          verificationsBatch.delete(docSnap.ref);
+          deletedVerificationsCount++;
+        }
+      });
+      if (deletedVerificationsCount > 0) {
+        await verificationsBatch.commit();
+        setVerifications(prev => prev.filter(v => v.issueId !== issueId));
+      }
+
+      if (targetIssue.communityId && targetIssue.communityId !== 'general') {
+        setCommunities(prevComms => prevComms.map(c => {
+          if (c.id === targetIssue.communityId) {
+            const updatedTotal = Math.max(0, c.totalIssues - 1);
+            const updatedResolved = targetIssue.status === 'RESOLVED' ? Math.max(0, c.resolvedIssues - 1) : c.resolvedIssues;
+            updateDoc(doc(db, 'communities', c.id), { 
+              totalIssues: updatedTotal,
+              resolvedIssues: updatedResolved
+            }).catch(e => console.warn('Could not update total issues in Firestore:', e));
+            return {
+              ...c,
+              totalIssues: updatedTotal,
+              resolvedIssues: updatedResolved
+            };
+          }
+          return c;
+        }));
+      }
+
+      if (currentUser && targetIssue.reportedBy === currentUser.id) {
+        updateUserProfile({
+          reportsCreated: Math.max(0, currentUser.reportsCreated - 1),
+          reportsResolved: targetIssue.status === 'RESOLVED' ? Math.max(0, currentUser.reportsResolved - 1) : currentUser.reportsResolved
+        });
+      }
+
+      if (navigator.onLine) {
+        setSyncStatus('Report deleted successfully!');
+        setTimeout(() => setSyncStatus(null), 2500);
+      }
+    } catch (e: any) {
+      setSyncStatus(null);
+      console.error('Error deleting issue/feed post/comments/verifications from Firestore:', e);
+      alert(`Failed to delete report in Firestore: ${e.message || e.toString()}`);
+    }
+  }, [issues, currentUser, deletePostLocally, updateUserProfile]);
 
   const handleCreateCommunity = useCallback(async (newCommData: any) => {
     if (!currentUser) return;
@@ -503,47 +1080,301 @@ export function useAppState() {
     }
   }, [currentUser]);
 
+  const handleUpdateCommunityDetails = useCallback(async (communityId: string, updates: Partial<Community>) => {
+    setCommunities(prev => prev.map(c => c.id === communityId ? { ...c, ...updates } : c));
+    try {
+      await communitiesService.updateCommunityDetails(communityId, updates);
+    } catch (e) {
+      console.error('Error updating community details in Firestore:', e);
+    }
+  }, []);
+
   const handleJoinCommunity = useCallback(async (id: string) => {
     if (!currentUser) return;
-    const updatedJoined = currentUser.joinedCommunities.includes(id)
-      ? currentUser.joinedCommunities
-      : [...currentUser.joinedCommunities, id];
-    
-    updateUserProfile({
-      joinedCommunities: updatedJoined
-    });
+    const targetComm = communities.find(c => c.id === id);
+    if (!targetComm) return;
 
-    setCommunities(prevComms => prevComms.map(c => {
-      if (c.id === id) {
-        const updatedMembers = c.memberIds.includes(currentUser.id)
-          ? c.memberIds
-          : [...c.memberIds, currentUser.id];
+    const isPrivate = targetComm.privacy === 'PRIVATE';
+
+    if (isPrivate) {
+      // Create request: add user to pendingMemberRequests
+      const updatedPending = targetComm.pendingMemberRequests?.includes(currentUser.id)
+        ? targetComm.pendingMemberRequests
+        : [...(targetComm.pendingMemberRequests || []), currentUser.id];
+      
+      setCommunities(prev => prev.map(c => c.id === id ? { ...c, pendingMemberRequests: updatedPending } : c));
+      
+      try {
+        await updateDoc(doc(db, 'communities', id), {
+          pendingMemberRequests: updatedPending,
+          updatedAt: new Date().toISOString()
+        });
+
+        // Add a notification for the community owner/admins
+        const adminIds = targetComm.adminIds || [targetComm.createdBy];
+        const adminNotifPromises = adminIds.map(async (adminId) => {
+          const notifId = `notif_${adminId}_${Date.now()}`;
+          const newNotif: Notification = {
+            id: notifId,
+            userId: adminId,
+            title: 'New Community Join Request',
+            body: `${currentUser.name} requested to join your private community "${targetComm.name}".`,
+            type: 'MEMBER_REQUEST',
+            targetId: id,
+            isRead: false,
+            createdAt: new Date().toISOString()
+          };
+          await setDoc(doc(db, 'notifications', notifId), cleanUndefined(newNotif));
+        });
+        await Promise.all(adminNotifPromises);
+      } catch (err) {
+        console.warn('Error requesting private community join:', err);
+      }
+    } else {
+      // Public community: join immediately
+      const updatedJoined = currentUser.joinedCommunities.includes(id)
+        ? currentUser.joinedCommunities
+        : [...currentUser.joinedCommunities, id];
+      
+      updateUserProfile({
+        joinedCommunities: updatedJoined
+      });
+
+      setCommunities(prevComms => prevComms.map(c => {
+        if (c.id === id) {
+          const updatedMembers = c.memberIds.includes(currentUser.id)
+            ? c.memberIds
+            : [...c.memberIds, currentUser.id];
+          
+          communitiesService.updateCommunityMembers(id, updatedMembers)
+            .catch(e => console.warn('Could not update community members in Firestore:', e));
+
+          return {
+            ...c,
+            memberIds: updatedMembers
+          };
+        }
+        return c;
+      }));
+
+      const actId = `act_${Date.now()}`;
+      const newAct: UserActivity = {
+        id: actId,
+        userId: currentUser.id,
+        type: 'join_community',
+        targetId: id,
+        targetTitle: targetComm.name,
+        createdAt: new Date().toISOString(),
+        pointsEarned: 0
+      };
+      setActivities(prev => [newAct, ...prev]);
+      setDoc(doc(db, 'activities', actId), cleanUndefined(newAct))
+        .catch(e => console.warn('Could not update join activity in Firestore:', e));
+    }
+  }, [currentUser, communities, updateUserProfile]);
+
+  const handleApproveMember = useCallback(async (communityId: string, memberId: string) => {
+    setCommunities(prev => prev.map(c => {
+      if (c.id === communityId) {
+        const updatedMembers = c.memberIds.includes(memberId) ? c.memberIds : [...c.memberIds, memberId];
+        const updatedPending = (c.pendingMemberRequests || []).filter(uid => uid !== memberId);
         
-        communitiesService.updateCommunityMembers(id, updatedMembers)
-          .catch(e => console.warn('Could not update community members in Firestore:', e));
+        updateDoc(doc(db, 'communities', communityId), {
+          memberIds: updatedMembers,
+          pendingMemberRequests: updatedPending,
+          updatedAt: new Date().toISOString()
+        }).catch(err => console.warn('Firestore error approving member:', err));
+
+        // Update the approved user's document if it exists in the user list
+        const approvedUser = users.find(u => u.id === memberId);
+        if (approvedUser) {
+          const updatedJoined = approvedUser.joinedCommunities.includes(communityId)
+            ? approvedUser.joinedCommunities
+            : [...approvedUser.joinedCommunities, communityId];
+          
+          updateDoc(doc(db, 'users', memberId), {
+            joinedCommunities: updatedJoined
+          }).catch(err => console.warn('Firestore error updating approved user communities:', err));
+
+          setUsers(prev => prev.map(u => {
+            if (u.id === memberId) {
+              return { ...u, joinedCommunities: updatedJoined };
+            }
+            return u;
+          }));
+        }
+
+        if (currentUser && currentUser.id === memberId) {
+          const updatedJoined = currentUser.joinedCommunities.includes(communityId)
+            ? currentUser.joinedCommunities
+            : [...currentUser.joinedCommunities, communityId];
+          setCurrentUser(prev => prev ? { ...prev, joinedCommunities: updatedJoined } : null);
+        }
+
+        // Notify approved user
+        const notifId = `notif_${memberId}_${Date.now()}`;
+        const newNotif: Notification = {
+          id: notifId,
+          userId: memberId,
+          title: 'Community Access Approved',
+          body: `Your request to join "${c.name}" has been approved!`,
+          type: 'STATUS_CHANGE',
+          targetId: communityId,
+          isRead: false,
+          createdAt: new Date().toISOString()
+        };
+        setDoc(doc(db, 'notifications', notifId), cleanUndefined(newNotif))
+          .catch(err => console.warn('Firestore error writing join approval notification:', err));
 
         return {
           ...c,
-          memberIds: updatedMembers
+          memberIds: updatedMembers,
+          pendingMemberRequests: updatedPending
         };
       }
       return c;
     }));
+  }, [users, currentUser]);
 
-    const actId = `act_${Date.now()}`;
-    const newAct: UserActivity = {
-      id: actId,
-      userId: currentUser.id,
-      type: 'join_community',
-      targetId: id,
-      targetTitle: communities.find(c => c.id === id)?.name || 'Community Space',
-      createdAt: new Date().toISOString(),
-      pointsEarned: 0
-    };
-    setActivities(prev => [newAct, ...prev]);
-    setDoc(doc(db, 'activities', actId), cleanUndefined(newAct))
-      .catch(e => console.warn('Could not update join activity in Firestore:', e));
-  }, [currentUser, communities, updateUserProfile]);
+  const handleRejectMember = useCallback(async (communityId: string, memberId: string) => {
+    setCommunities(prev => prev.map(c => {
+      if (c.id === communityId) {
+        const updatedPending = (c.pendingMemberRequests || []).filter(uid => uid !== memberId);
+        
+        updateDoc(doc(db, 'communities', communityId), {
+          pendingMemberRequests: updatedPending,
+          updatedAt: new Date().toISOString()
+        }).catch(err => console.warn('Firestore error rejecting member:', err));
+
+        return {
+          ...c,
+          pendingMemberRequests: updatedPending
+        };
+      }
+      return c;
+    }));
+  }, []);
+
+  const handleRemoveMember = useCallback(async (communityId: string, memberId: string) => {
+    setCommunities(prev => prev.map(c => {
+      if (c.id === communityId) {
+        const updatedMembers = c.memberIds.filter(uid => uid !== memberId);
+        const updatedAdmins = (c.adminIds || []).filter(uid => uid !== memberId);
+
+        updateDoc(doc(db, 'communities', communityId), {
+          memberIds: updatedMembers,
+          adminIds: updatedAdmins,
+          updatedAt: new Date().toISOString()
+        }).catch(err => console.warn('Firestore error removing member:', err));
+
+        // Update target user's joined communities in Firestore
+        const newJoined = users.find(u => u.id === memberId)?.joinedCommunities.filter(cid => cid !== communityId) || [];
+        updateDoc(doc(db, 'users', memberId), {
+          joinedCommunities: newJoined
+        }).catch(err => console.warn('Firestore error removing community from user profile:', err));
+
+        setUsers(prev => prev.map(u => {
+          if (u.id === memberId) {
+            return { ...u, joinedCommunities: newJoined };
+          }
+          return u;
+        }));
+
+        if (currentUser && currentUser.id === memberId) {
+          const selfJoined = currentUser.joinedCommunities.filter(cid => cid !== communityId);
+          setCurrentUser(prev => prev ? { ...prev, joinedCommunities: selfJoined } : null);
+        }
+
+        return {
+          ...c,
+          memberIds: updatedMembers,
+          adminIds: updatedAdmins
+        };
+      }
+      return c;
+    }));
+  }, [users, currentUser]);
+
+  const handleUpdateMemberRole = useCallback(async (communityId: string, memberId: string, roleType: 'ADMIN' | 'MEMBER') => {
+    setCommunities(prev => prev.map(c => {
+      if (c.id === communityId) {
+        let updatedAdmins = c.adminIds || [];
+        if (roleType === 'ADMIN') {
+          updatedAdmins = updatedAdmins.includes(memberId) ? updatedAdmins : [...updatedAdmins, memberId];
+        } else {
+          updatedAdmins = updatedAdmins.filter(uid => uid !== memberId);
+        }
+
+        updateDoc(doc(db, 'communities', communityId), {
+          adminIds: updatedAdmins,
+          updatedAt: new Date().toISOString()
+        }).catch(err => console.warn('Firestore error updating admin role:', err));
+
+        // Notify member
+        const notifId = `notif_${memberId}_${Date.now()}`;
+        const newNotif: Notification = {
+          id: notifId,
+          userId: memberId,
+          title: 'Role Promoted',
+          body: `You have been promoted to ${roleType} in community "${c.name}".`,
+          type: 'ROLE_PROMOTED',
+          targetId: communityId,
+          isRead: false,
+          createdAt: new Date().toISOString()
+        };
+        setDoc(doc(db, 'notifications', notifId), cleanUndefined(newNotif))
+          .catch(err => console.warn('Firestore error writing role update notification:', err));
+
+        return {
+          ...c,
+          adminIds: updatedAdmins
+        };
+      }
+      return c;
+    }));
+  }, []);
+
+  const handleMarkAsDuplicate = useCallback(async (issueId: string, duplicateOfId: string | null) => {
+    setIssues(prev => prev.map(i => {
+      if (i.id === issueId) {
+        const updated = {
+          ...i,
+          duplicateOfIssueId: duplicateOfId,
+          updatedAt: new Date().toISOString()
+        };
+        updateDoc(doc(db, 'issues', issueId), {
+          duplicateOfIssueId: duplicateOfId,
+          updatedAt: updated.updatedAt
+        }).catch(err => console.warn('Error marking duplicate in Firestore:', err));
+        return updated;
+      }
+      return i;
+    }));
+  }, []);
+
+  const handleMarkNotificationRead = useCallback(async (notificationId: string) => {
+    setNotifications(prev => prev.map(n => n.id === notificationId ? { ...n, isRead: true } : n));
+    try {
+      await updateDoc(doc(db, 'notifications', notificationId), { isRead: true });
+    } catch (e) {
+      console.error('Error marking notification as read in Firestore:', e);
+    }
+  }, []);
+
+  const handleMarkAllNotificationsRead = useCallback(async () => {
+    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    try {
+      const batch = writeBatch(db);
+      notifications.forEach(n => {
+        if (!n.isRead) {
+          batch.update(doc(db, 'notifications', n.id), { isRead: true });
+        }
+      });
+      await batch.commit();
+    } catch (e) {
+      console.error('Error marking all notifications as read in Firestore:', e);
+    }
+  }, [notifications]);
 
   const handleLeaveCommunity = useCallback(async (id: string) => {
     if (!currentUser) return;
@@ -596,28 +1427,66 @@ export function useAppState() {
         let pScoreDiff = 0;
         let vCount = i.verificationCount;
         let fCount = i.fakeCount;
+        let newStatus = i.status;
+        const roleUpper = (currentUser.role || '').toUpperCase();
+        const isUserAuthoritative = roleUpper === 'COMMUNITY ADMIN' || roleUpper === 'ADMIN' || roleUpper === 'RESOLVER' || roleUpper === 'AUTHORITY';
 
         if (voteType === 'CONFIRM') {
           vCount += 1;
           trustDiff = 5;
           pScoreDiff = 2;
+          
+          if (i.status === 'OPEN' || i.status === 'AI_ANALYZED') {
+            if (isUserAuthoritative || vCount >= 3) {
+              newStatus = 'COMMUNITY_VERIFIED';
+            }
+          }
         } else if (voteType === 'FAKE') {
           fCount += 1;
           trustDiff = -15;
           pScoreDiff = -5;
+
+          if (isUserAuthoritative || fCount >= 3) {
+            newStatus = 'CLOSED';
+          }
         } else if (voteType === 'RESOLVED') {
           trustDiff = 10;
+          
+          const pastResolvedVotes = verifications.filter(v => v.issueId === issueId && v.voteType === 'RESOLVED').length;
+          const totalResolvedVotes = pastResolvedVotes + 1;
+          if (isUserAuthoritative || totalResolvedVotes >= 3) {
+            newStatus = 'RESOLVED';
+          }
         }
 
         const updatedIssue = {
           ...i,
           verificationCount: vCount,
           fakeCount: fCount,
+          status: newStatus,
           trustScore: Math.min(100, Math.max(0, i.trustScore + trustDiff)),
-          priorityScore: Math.min(100, Math.max(0, i.priorityScore + pScoreDiff))
+          priorityScore: Math.min(100, Math.max(0, i.priorityScore + pScoreDiff)),
+          resolvedAt: newStatus === 'RESOLVED' && i.status !== 'RESOLVED' ? new Date().toISOString() : i.resolvedAt,
+          updatedAt: new Date().toISOString()
         };
 
         setDoc(doc(db, 'issues', i.id), cleanUndefined(updatedIssue))
+          .then(() => {
+            if (newStatus !== i.status) {
+              const feedPostId = `post_${i.id}`;
+              const feedPostRef = doc(db, 'feed_posts', feedPostId);
+              const postUpdates = {
+                status: newStatus,
+                type: newStatus === 'RESOLVED' ? ('ISSUE_RESOLVED' as const) : ('ISSUE_REPORTED' as const),
+                updatedAt: new Date().toISOString()
+              };
+              updateDoc(feedPostRef, cleanUndefined(postUpdates))
+                .then(() => {
+                  updatePostLocally(feedPostId, postUpdates);
+                })
+                .catch(err => console.warn('Could not update feed post:', err));
+            }
+          })
           .catch(e => console.error('Error updating issue stats in Firestore:', e));
 
         return updatedIssue;
@@ -644,7 +1513,7 @@ export function useAppState() {
     setActivities(prev => [newAct, ...prev]);
     setDoc(doc(db, 'activities', actId), cleanUndefined(newAct))
       .catch(e => console.warn('Could not save activity in Firestore:', e));
-  }, [currentUser, issues, updateUserProfile]);
+  }, [currentUser, issues, verifications, updateUserProfile, updatePostLocally]);
 
   const handleCastVote = useCallback(async (voteType: 'CONFIRM' | 'FAKE' | 'RESOLVED', comment: string) => {
     if (!selectedIssueId) return;
@@ -978,6 +1847,10 @@ export function useAppState() {
     window.location.hash = `#/${tab}`;
   }, []);
 
+  const handleViewUserProfile = useCallback((userId: string) => {
+    window.location.hash = `#/profile?id=${userId}`;
+  }, []);
+
   const handleSetSelectedCommunityId = useCallback((id: string) => {
     setSelectedCommunityId(id);
     if (id === 'all') {
@@ -986,6 +1859,165 @@ export function useAppState() {
       window.location.hash = `#/communities?id=${id}`;
     }
   }, []);
+
+  const handleResetDatabase = useCallback(async () => {
+    try {
+      console.log('Resetting and seeding sandbox database...');
+      
+      // Collections to clear
+      const collectionsToClear = [
+        'users',
+        'communities',
+        'issues',
+        'verifications',
+        'comments',
+        'activities',
+        'notifications',
+        'feed_posts',
+        'post_reactions'
+      ];
+      
+      for (const colName of collectionsToClear) {
+        const snap = await getDocs(collection(db, colName));
+        const batch = writeBatch(db);
+        snap.forEach((d) => {
+          batch.delete(doc(db, colName, d.id));
+        });
+        await batch.commit();
+      }
+
+      // Fetch mappings first
+      let mappings: Record<string, string> = {};
+      try {
+        const mappingSnap = await getDoc(doc(db, 'metadata', 'user_mappings'));
+        if (mappingSnap.exists()) {
+          mappings = mappingSnap.data() as Record<string, string>;
+        }
+      } catch (err) {
+        console.warn('Could not read user mappings during reset:', err);
+      }
+
+      const idMap: Record<string, string> = {};
+      const emailToMockId: Record<string, string> = {
+        'admin_communityhero_net': 'user_1',
+        'citizen_communityhero_net': 'user_2',
+        'resolver_communityhero_net': 'user_3',
+        'authority_communityhero_net': 'user_4'
+      };
+      
+      Object.entries(mappings).forEach(([cleanEmail, uid]) => {
+        const mockId = emailToMockId[cleanEmail];
+        if (mockId) {
+          idMap[mockId] = uid;
+        }
+      });
+
+      const mapId = (id: string): string => idMap[id] || id;
+      const mapIdArray = (ids: string[]): string[] => (ids || []).map(mapId);
+
+      // Re-seed all mock data with dynamic mapping substitutions
+      const batch = writeBatch(db);
+      
+      mockUsers.forEach((u) => {
+        const newId = mapId(u.id);
+        const mappedUser = { ...u, id: newId };
+        batch.set(doc(db, 'users', newId), cleanUndefined(mappedUser));
+      });
+      mockCommunities.forEach((c) => {
+        const mappedComm = {
+          ...c,
+          adminIds: mapIdArray(c.adminIds),
+          memberIds: mapIdArray(c.memberIds)
+        };
+        batch.set(doc(db, 'communities', c.id), cleanUndefined(mappedComm));
+      });
+      mockIssues.forEach((i) => {
+        const mappedIssue = {
+          ...i,
+          reportedBy: mapId(i.reportedBy),
+          assignedTo: i.assignedTo ? mapId(i.assignedTo) : undefined,
+          verifiedUserIds: mapIdArray(i.verifiedUserIds),
+          spamUserIds: mapIdArray(i.spamUserIds),
+          resolvedUserIds: mapIdArray(i.resolvedUserIds)
+        };
+        batch.set(doc(db, 'issues', i.id), cleanUndefined(mappedIssue));
+      });
+      mockVerifications.forEach((v) => {
+        const mappedVer = {
+          ...v,
+          userId: mapId(v.userId)
+        };
+        batch.set(doc(db, 'verifications', v.id), cleanUndefined(mappedVer));
+      });
+      mockComments.forEach((c) => {
+        const mappedComment = {
+          ...c,
+          userId: mapId(c.userId)
+        };
+        batch.set(doc(db, 'comments', c.id), cleanUndefined(mappedComment));
+      });
+      mockActivities.forEach((a) => {
+        const mappedActivity = {
+          ...a,
+          userId: mapId(a.userId),
+          targetId: mapId(a.targetId)
+        };
+        batch.set(doc(db, 'activities', a.id), cleanUndefined(mappedActivity));
+      });
+      mockFeedPosts.forEach((f) => {
+        const mappedFeedPost = {
+          ...f,
+          authorId: mapId(f.authorId)
+        };
+        batch.set(doc(db, 'feed_posts', f.id), cleanUndefined(mappedFeedPost));
+      });
+      
+      // Add notifications for active user if present
+      if (currentUser) {
+        const welcomeNotifs: Notification[] = [
+          {
+            id: `notif_${currentUser.id}_welcome`,
+            userId: currentUser.id,
+            title: 'Welcome to Community Hero!',
+            body: 'Thank you for joining our social civic platform. Report issues, cast verifications, and cooperate with neighbors to earn reputation!',
+            type: 'ROLE_PROMOTED',
+            targetId: currentUser.id,
+            isRead: false,
+            createdAt: new Date(Date.now() - 3600000 * 24).toISOString()
+          },
+          {
+            id: `notif_${currentUser.id}_leakage`,
+            userId: currentUser.id,
+            title: 'Water Leakage Alert near Block C',
+            body: 'A Water Leakage report in Green Park Society has been marked IN_PROGRESS by resolver Rohan Patil.',
+            type: 'STATUS_CHANGE',
+            targetId: 'issue_1',
+            isRead: false,
+            createdAt: new Date(Date.now() - 3600000 * 4).toISOString()
+          },
+          {
+            id: `notif_${currentUser.id}_pothole`,
+            userId: currentUser.id,
+            title: 'Critical Pothole reported in Shivajinagar',
+            body: 'A new Critical Pothole has been reported on High Street road. Drive safely!',
+            type: 'NEW_ISSUE',
+            targetId: 'issue_4',
+            isRead: false,
+            createdAt: new Date(Date.now() - 3600000 * 2).toISOString()
+          }
+        ];
+        welcomeNotifs.forEach((n) => {
+          batch.set(doc(db, 'notifications', n.id), n);
+        });
+      }
+      
+      await batch.commit();
+      window.location.reload();
+    } catch (e) {
+      console.error('Failed to reset and re-seed database:', e);
+      alert('Error resetting database. Check console logs for details.');
+    }
+  }, [currentUser]);
 
   return {
     appStarted,
@@ -1000,6 +2032,9 @@ export function useAppState() {
     currentUser,
     currentRole,
     selectedCommunityId,
+    activeLocationFilter,
+    setActiveLocationFilter,
+    notifications,
     authModalOpen,
     authModalRole,
     authLoading,
@@ -1018,7 +2053,10 @@ export function useAppState() {
     handleStartApp,
     handleSignOut,
     handleCreateIssue,
+    handleUpdateIssue,
+    handleDeleteIssue,
     handleCreateCommunity,
+    handleUpdateCommunityDetails,
     handleJoinCommunity,
     handleLeaveCommunity,
     handleCastVote,
@@ -1031,6 +2069,22 @@ export function useAppState() {
     handleAddComment,
     handleAdminUpdate,
     handleSelectIssue,
-    handleNavigation
+    handleNavigation,
+    handleMarkNotificationRead,
+    handleMarkAllNotificationsRead,
+    handleApproveMember,
+    handleRejectMember,
+    handleRemoveMember,
+    handleUpdateMemberRole,
+    handleMarkAsDuplicate,
+    handleResetDatabase,
+    theme,
+    toggleTheme,
+    isOnline,
+    syncStatus,
+    viewingUserId,
+    handleViewUserProfile,
+    handleDeleteAccount,
+    userCoords
   };
 }

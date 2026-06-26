@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, terminate, clearIndexedDbPersistence } from 'firebase/firestore';
 
 // 1. Read directly from the environment variables instead of a JSON import
 const firebaseConfig = {
@@ -18,9 +18,21 @@ const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
 
-// Enable persistent offline cache with multi-tab manager
-export const db = initializeFirestore(app, {
+// Check if developer requested to disable persistent cache
+const disableCache = localStorage.getItem('disable_firestore_cache') === 'true';
+
+// Enable persistent offline cache with multi-tab manager unless disabled
+export const db = initializeFirestore(app, disableCache ? {} : {
   localCache: persistentLocalCache({
     tabManager: persistentMultipleTabManager()
   })
 }, firebaseConfig.firestoreDatabaseId);
+
+export const purgeFirestoreCache = async () => {
+  try {
+    await terminate(db);
+    await clearIndexedDbPersistence(db);
+  } catch (e) {
+    console.warn('Error purging Firestore cache:', e);
+  }
+};

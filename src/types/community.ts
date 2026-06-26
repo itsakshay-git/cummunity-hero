@@ -23,6 +23,11 @@ export interface Community {
   healthScore?: number;
   level?: number;
   activeIssues?: number;
+  aiInsights?: string;
+  privacy?: 'PUBLIC' | 'PRIVATE';
+  city?: string;
+  state?: string;
+  pendingMemberRequests?: string[];
 }
 
 export interface CommunityMember {

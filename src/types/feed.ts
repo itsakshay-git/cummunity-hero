@@ -19,6 +19,7 @@ export interface FeedPost {
   saveCount: number;
   createdAt: string;
   updatedAt: string;
+  mediaAttachments?: { type: 'image' | 'video'; url: string }[];
 }
 
 export interface PostReaction {

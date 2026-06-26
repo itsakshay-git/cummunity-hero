@@ -70,6 +70,10 @@ export interface Issue {
   shareCount?: number;
   saveCount?: number;
   riskLevel?: 'Low' | 'Medium' | 'High' | 'Critical';
+  mediaAttachments?: { type: 'image' | 'video'; url: string }[];
+  city?: string;
+  district?: string;
+  state?: string;
 }
 
 export interface IssueVerification {

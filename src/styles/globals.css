@@ -1,1 +1,118 @@
 @import "tailwindcss";
+
+@variant dark (&:where(.dark, .dark *));
+
+/* Global Thin Scrollbar Customization */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1; /* slate-300 */
+  border-radius: 9999px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #475569; /* slate-600 */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8; /* slate-400 */
+}
+
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #64748b; /* slate-500 */
+}
+
+/* Firefox scrollbar styling */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.dark * {
+  scrollbar-color: #475569 transparent;
+}
+
+/* Leaflet Dark Mode Support */
+.dark .leaflet-container {
+  background: #0f172a !important; /* slate-900 */
+}
+
+.dark .leaflet-tile-container {
+  filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+}
+
+.dark .leaflet-popup-content-wrapper,
+.dark .leaflet-popup-tip {
+  background: #0f172a !important; /* slate-900 */
+  color: #f1f5f9 !important; /* slate-100 */
+  border: 1px solid #334155 !important; /* slate-700 */
+}
+
+.dark .leaflet-popup-content-wrapper {
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.3) !important;
+}
+
+/* AI Diagnosis Scan Line Keyframes */
+@keyframes scan-line {
+  0% {
+    top: 0%;
+  }
+  50% {
+    top: 100%;
+  }
+  100% {
+    top: 0%;
+  }
+}
+
+.animate-scan-line {
+  animation: scan-line 4s linear infinite;
+}
+
+/* User GPS Pulse Animation */
+@keyframes user-pulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7);
+  }
+  70% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 8px rgba(37, 99, 235, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
+  }
+}
+
+.animate-user-pulse {
+  animation: user-pulse 2s infinite ease-in-out;
+}
+
+/* OpenStreetMap Hotspots Custom Animations */
+@keyframes zone-glow {
+  0% {
+    stroke-opacity: 0.4;
+    fill-opacity: 0.15;
+  }
+  50% {
+    stroke-opacity: 0.8;
+    fill-opacity: 0.3;
+  }
+  100% {
+    stroke-opacity: 0.4;
+    fill-opacity: 0.15;
+  }
+}
+
+.leaflet-zone-highlight {
+  animation: zone-glow 2.5s infinite ease-in-out;
+}

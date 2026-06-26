@@ -5,6 +5,8 @@ import {
 } from 'lucide-react';
 import { FeedPost, Community, User, Comment } from '../../../types';
 import { getLevelInfo } from '../utils';
+import Badge from '../../../components/ui/Badge';
+import MediaCarousel from '../../../components/ui/MediaCarousel';
 
 interface FeedPostCardProps {
   post: FeedPost;
@@ -24,6 +26,7 @@ interface FeedPostCardProps {
   onEditComment?: (commentId: string, newBody: string, postId: string) => Promise<void>;
   onDeleteClick: (commentId: string, postId: string) => void;
   onShareClick: (title: string) => void;
+  onViewUserProfile: (userId: string) => void;
 }
 
 const FeedPostCard: React.FC<FeedPostCardProps> = ({
@@ -43,7 +46,8 @@ const FeedPostCard: React.FC<FeedPostCardProps> = ({
   addComment,
   onEditComment,
   onDeleteClick,
-  onShareClick
+  onShareClick,
+  onViewUserProfile,
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [commentInput, setCommentInput] = useState('');
@@ -86,19 +90,24 @@ const FeedPostCard: React.FC<FeedPostCardProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-all">
-      {/* Post Header */}
-      <div className="p-6 pb-4 border-b border-slate-100 flex items-center justify-between">
+    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden hover:shadow-md transition-all">
+      <div className="p-4 pb-2.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
         <div className="flex items-center space-x-3.5">
           <img 
             src={authorUser?.photoUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(post.userId)}`} 
             alt={authorUser?.name || 'Civic Hero'} 
-            className="w-10 h-10 rounded-xl object-cover border border-slate-100 bg-slate-50"
+            className="w-10 h-10 rounded-xl object-cover border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 cursor-pointer hover:opacity-85 transition-opacity"
             referrerPolicy="no-referrer"
+            onClick={() => onViewUserProfile(post.userId)}
           />
           <div>
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="font-black text-slate-900 text-xs leading-tight">{authorUser?.name || 'Civic Hero'}</span>
+              <span 
+                className="font-black text-slate-900 dark:text-slate-100 text-xs leading-tight hover:underline cursor-pointer"
+                onClick={() => onViewUserProfile(post.userId)}
+              >
+                {authorUser?.name || 'Civic Hero'}
+              </span>
               {authorLevel && (
                 <span className={`text-[8px] font-mono font-bold px-1.5 py-0.5 rounded ${authorLevel.color}`}>
                   Lvl {authorLevel.level} {authorLevel.title}
@@ -126,71 +135,59 @@ const FeedPostCard: React.FC<FeedPostCardProps> = ({
 
         {/* Post type / Severity indicator */}
         {post.type === 'ISSUE_REPORTED' && post.severity && (
-          <span className={`font-mono text-[9px] font-black uppercase px-2.5 py-1 rounded-full ${
-            post.severity === 'Critical' ? 'bg-red-50 text-red-600 border border-red-200' :
-            post.severity === 'High' ? 'bg-amber-50 text-amber-600 border border-amber-200' : 'bg-blue-50 text-blue-600 border border-blue-200'
-          }`}>
-            {post.severity}
-          </span>
+          <Badge variant="severity">{post.severity}</Badge>
         )}
 
         {post.type === 'ISSUE_RESOLVED' && (
-          <span className="font-mono text-[9px] font-black uppercase px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-            RESOLVED 🎉
-          </span>
+          <Badge variant="status">RESOLVED</Badge>
         )}
 
         {post.type === 'COMMUNITY_UPDATE' && (
-          <span className="font-mono text-[9px] font-black uppercase px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
-            ANNOUNCEMENT 📢
-          </span>
+          <Badge variant="status" colorClass="bg-indigo-50/50 text-indigo-700 border-indigo-200/50">
+            ANNOUNCEMENT
+          </Badge>
         )}
       </div>
 
       {/* Post Body */}
-      <div className="p-6 space-y-4">
-        <div className="space-y-1.5">
+      <div className="p-4 space-y-3">
+        <div className="space-y-1">
           <h3 
             onClick={() => post.issueId && onSelectIssue(post.issueId)}
-            className={`text-sm md:text-base font-black text-slate-950 transition-colors leading-snug ${post.issueId ? 'hover:text-emerald-600 cursor-pointer' : ''}`}
+            className={`text-xs md:text-sm font-black text-slate-950 dark:text-slate-100 transition-colors leading-snug ${post.issueId ? 'hover:text-emerald-600 cursor-pointer' : ''}`}
           >
             {post.title}
           </h3>
-          <p className="text-xs text-slate-600 leading-relaxed line-clamp-3">
+          <p className="text-[11px] text-slate-650 dark:text-slate-350 leading-relaxed line-clamp-3">
             {post.body}
           </p>
         </div>
 
         {/* Category and Distance Tags */}
         {post.category && (
-          <div className="flex flex-wrap gap-2 text-[10px] font-mono">
-            <span className="bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded font-bold">
-              #{post.category}
-            </span>
-            <span className="bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded font-bold">
-              Status: {post.status || 'ACTIVE'}
-            </span>
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="category">#{post.category}</Badge>
+            <Badge variant="status">{post.status || 'ACTIVE'}</Badge>
           </div>
         )}
 
-        {/* Issue Image */}
-        {post.imageUrl && (
+        {/* Media Attachments Carousel / Single Image */}
+        {((post.mediaAttachments && post.mediaAttachments.length > 0) || post.imageUrl) ? (
           <div 
             onClick={() => post.issueId && onSelectIssue(post.issueId)}
-            className={`relative h-48 sm:h-64 bg-slate-100 rounded-2xl overflow-hidden border border-slate-200/60 shadow-inner ${post.issueId ? 'cursor-pointer' : ''}`}
+            className={post.issueId ? 'cursor-pointer' : ''}
           >
-            <img 
-              src={post.imageUrl} 
-              alt={post.title} 
-              className="w-full h-full object-cover hover:scale-[1.02] transition-transform duration-500"
-              referrerPolicy="no-referrer"
+            <MediaCarousel 
+              attachments={post.mediaAttachments}
+              fallbackUrl={post.imageUrl}
+              aspectRatioClassName="aspect-video"
             />
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* Post Engagement count */}
-      <div className="px-6 pb-2.5 text-[10px] text-slate-400 font-semibold flex justify-between border-b border-slate-100/50">
+      <div className="px-4 pb-2 text-[10px] text-slate-450 dark:text-slate-500 font-semibold flex justify-between border-b border-slate-100/50 dark:border-slate-805/50">
         <span>{baseAffectedCount} citizens affected</span>
         <button 
           onClick={handleExpandDiscuss}
@@ -201,44 +198,44 @@ const FeedPostCard: React.FC<FeedPostCardProps> = ({
       </div>
 
       {/* Social Actions bar */}
-      <div className="px-6 py-2.5 bg-slate-50/50 flex items-center justify-between">
+      <div className="px-4 py-2 bg-slate-50/50 dark:bg-slate-900/60 flex items-center justify-between">
         <button 
           id={`btn-support-${post.id}`}
           onClick={handleSupportClick}
-          className={`flex items-center space-x-1.5 text-xs font-black px-3.5 py-1.5 rounded-xl transition-all cursor-pointer ${
+          className={`flex items-center space-x-1 text-xs font-black px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
             isSupported 
-              ? 'bg-rose-50 text-rose-600 font-black' 
-              : 'text-slate-600 hover:bg-slate-100'
+              ? 'bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 font-black' 
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
-          <Heart className={`w-4 h-4 ${isSupported ? 'fill-rose-500 text-rose-500 animate-pulse' : ''}`} />
+          <Heart className={`w-3.5 h-3.5 ${isSupported ? 'fill-rose-500 text-rose-500 animate-pulse' : ''}`} />
           <span>{isSupported ? `Supported (${post.supportCount})` : `Support (${post.supportCount})`}</span>
         </button>
 
         <button 
           id={`btn-expand-comments-${post.id}`}
           onClick={handleExpandDiscuss}
-          className={`flex items-center space-x-1.5 text-xs font-black px-3.5 py-1.5 rounded-xl hover:bg-slate-100 cursor-pointer text-slate-600 ${
-            expanded ? 'bg-slate-100 text-emerald-600' : ''
+          className={`flex items-center space-x-1 text-xs font-black px-2.5 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer text-slate-650 dark:text-slate-400 ${
+            expanded ? 'bg-slate-100 dark:bg-slate-800 text-emerald-650 dark:text-emerald-400 font-bold' : ''
           }`}
         >
-          <MessageSquare className="w-4 h-4" />
+          <MessageSquare className="w-3.5 h-3.5" />
           <span>Discuss ({post.commentCount})</span>
         </button>
 
         <button 
           onClick={() => onShareClick(post.title)}
-          className="flex items-center space-x-1.5 text-xs font-black px-3.5 py-1.5 rounded-xl hover:bg-slate-100 cursor-pointer text-slate-600"
+          className="flex items-center space-x-1 text-xs font-black px-2.5 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer text-slate-650 dark:text-slate-400"
         >
-          <Share2 className="w-4 h-4" />
+          <Share2 className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Share</span>
         </button>
 
         <button 
           onClick={handleSaveClick}
-          className="flex items-center space-x-1.5 text-xs font-black px-3.5 py-1.5 rounded-xl hover:bg-slate-100 cursor-pointer text-slate-600"
+          className="flex items-center space-x-1 text-xs font-black px-2.5 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer text-slate-650 dark:text-slate-400"
         >
-          <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-emerald-600 text-emerald-600' : ''}`} />
+          <Bookmark className={`w-3.5 h-3.5 ${isSaved ? 'fill-emerald-605 text-emerald-500' : ''}`} />
           <span className="hidden sm:inline">{isSaved ? 'Saved' : 'Save'}</span>
         </button>
       </div>
@@ -250,10 +247,10 @@ const FeedPostCard: React.FC<FeedPostCardProps> = ({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="bg-slate-50 border-t border-slate-100 overflow-hidden"
+            className="bg-slate-50 dark:bg-slate-950/40 border-t border-slate-100 dark:border-slate-800/80 overflow-hidden"
           >
-            <div className="p-6 space-y-4">
-              <h4 className="font-extrabold text-slate-900 text-xs">Community Discussion</h4>
+            <div className="p-4 space-y-3">
+              <h4 className="font-extrabold text-slate-900 dark:text-slate-200 text-xs">Community Discussion</h4>
               
               {/* Inner Comment list */}
               <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
@@ -267,21 +264,27 @@ const FeedPostCard: React.FC<FeedPostCardProps> = ({
                   postComments.map((comment: Comment) => {
                     const isEditing = editingCommentId === comment.id;
                     return (
-                      <div key={comment.id} className="p-3 bg-white border border-slate-100 rounded-xl space-y-1 shadow-sm flex items-start gap-2.5">
+                      <div key={comment.id} className="p-3 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 rounded-xl space-y-1 shadow-sm flex items-start gap-2.5">
                         <img 
                           src={comment.userPhotoUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(comment.userId)}`}
                           alt={comment.userName}
-                          className="w-7 h-7 rounded-lg object-cover flex-shrink-0"
+                          className="w-7 h-7 rounded-lg object-cover flex-shrink-0 cursor-pointer hover:opacity-85 transition-opacity"
+                          onClick={() => onViewUserProfile(comment.userId)}
                         />
                         <div className="flex-grow space-y-0.5">
                           <div className="flex items-center justify-between text-[10px]">
-                            <span className="font-black text-slate-950">{comment.userName}</span>
+                            <span 
+                              className="font-black text-slate-905 dark:text-slate-200 hover:underline cursor-pointer"
+                              onClick={() => onViewUserProfile(comment.userId)}
+                            >
+                              {comment.userName}
+                            </span>
                             <div className="flex items-center space-x-2">
                               <span className="text-slate-400">
                                 {new Date(comment.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               </span>
                               {currentUser && comment.userId === currentUser.id && !isEditing && (
-                                <div className="flex items-center space-x-1.5 ml-2 border-l border-slate-200 pl-2">
+                                <div className="flex items-center space-x-1.5 ml-2 border-l border-slate-200 dark:border-slate-700 pl-2">
                                   <button
                                     onClick={() => {
                                       setEditingCommentId(comment.id);
@@ -309,7 +312,7 @@ const FeedPostCard: React.FC<FeedPostCardProps> = ({
                                 type="text"
                                 value={editingText}
                                 onChange={(e) => setEditingText(e.target.value)}
-                                className="flex-grow px-2.5 py-1 bg-white border border-slate-200 text-slate-800 text-xs rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                className="flex-grow px-2.5 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 text-xs rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500"
                               />
                               <button
                                 onClick={async () => {
@@ -330,7 +333,7 @@ const FeedPostCard: React.FC<FeedPostCardProps> = ({
                               </button>
                             </div>
                           ) : (
-                            <p className="text-xs text-slate-700 leading-normal">
+                            <p className="text-xs text-slate-700 dark:text-slate-300 leading-normal">
                               {comment.body}
                             </p>
                           )}
@@ -345,19 +348,19 @@ const FeedPostCard: React.FC<FeedPostCardProps> = ({
               {currentUser && (
                 <form 
                   onSubmit={submitFeedComment} 
-                  className="flex gap-2 pt-3 border-t border-slate-100"
+                  className="flex gap-2 pt-3 border-t border-slate-100 dark:border-slate-800"
                 >
                   <input 
                     type="text" 
                     placeholder="Add an update comment, verify details or coordinate repairs..."
                     value={commentInput}
                     onChange={(e) => setCommentInput(e.target.value)}
-                    className="flex-grow px-3.5 py-2 bg-white border border-slate-200 text-slate-800 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                    className="flex-grow px-3.5 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                     required
                   />
                   <button 
                     type="submit"
-                    className="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all flex items-center space-x-1 cursor-pointer"
+                    className="px-3 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all flex items-center space-x-1 cursor-pointer"
                   >
                     <Send className="w-3.5 h-3.5" />
                   </button>
