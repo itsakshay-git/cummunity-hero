@@ -35,6 +35,7 @@ export interface User {
   city?: string;
   district?: string;
   state?: string;
+  completedChallenges?: string[];
 }
 
 export interface Notification {
@@ -88,4 +89,16 @@ export interface UserBadge {
   badgeId: string;
   earnedAt: string;
   sourceActivityId?: string;
+}
+
+export interface CivicChallenge {
+  id: string;
+  title: string;
+  description: string;
+  type: 'DAILY' | 'WEEKLY' | 'COMMUNITY';
+  xpReward: number;
+  badgeReward?: string;
+  targetCount: number;
+  communityId?: string;
+  category?: string;
 }

@@ -53,6 +53,20 @@ export const ALL_BADGES = [
     desc: 'Reached 600+ Reputation XP', 
     color: 'bg-rose-500 text-white border-rose-200' 
   },
+  { 
+    id: 'clean_champ', 
+    name: 'Cleanliness Champion', 
+    icon: Sparkles, 
+    desc: 'Completed cleanliness challenges', 
+    color: 'bg-green-500 text-white border-green-200' 
+  },
+  { 
+    id: 'water_warrior', 
+    name: 'Water Warrior', 
+    icon: Sparkles, 
+    desc: 'Completed water quality/leakage challenges', 
+    color: 'bg-blue-500 text-white border-blue-200' 
+  },
 ];
 
 export const PRESETS = [

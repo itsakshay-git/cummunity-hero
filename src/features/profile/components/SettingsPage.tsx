@@ -41,7 +41,7 @@ export default function SettingsPage({
   onUpdateProfile
 }: SettingsPageProps) {
   // Navigation Tabs for Settings Page
-  const [activeSettingsTab, setActiveSettingsTab] = useState<'appearance' | 'account' | 'preferences'>('appearance');
+  const [activeSettingsTab, setActiveSettingsTab] = useState<'appearance' | 'account' | 'preferences' | 'roles'>('appearance');
   const [resetLoading, setResetLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
@@ -279,6 +279,17 @@ export default function SettingsPage({
           >
             <Sliders className="w-4 h-4 text-amber-500" />
             <span>Preferences</span>
+          </button>
+          <button
+            onClick={() => setActiveSettingsTab('roles')}
+            className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-[11px] font-bold tracking-wide uppercase transition-all text-left cursor-pointer border-0 w-full whitespace-nowrap ${
+              activeSettingsTab === 'roles' 
+                ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white' 
+                : 'text-slate-500 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 hover:text-slate-800 dark:text-slate-400'
+            }`}
+          >
+            <Shield className="w-4 h-4 text-emerald-500" />
+            <span>Civic Roles Guide</span>
           </button>
         </nav>
 
@@ -716,6 +727,118 @@ export default function SettingsPage({
                 </div>
               </div>
 
+            </div>
+          )}
+
+          {/* TAB 4: ROLES GUIDE */}
+          {activeSettingsTab === 'roles' && (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-xs font-black text-slate-900 dark:text-slate-205 uppercase tracking-wider">Civic Roles & Rules Guide</h3>
+                <p className="text-[10px] text-slate-400 dark:text-slate-505 leading-normal font-medium">Learn about the different roles, responsibilities, and gamification ranks on the Community Hero platform.</p>
+              </div>
+
+              <div className="space-y-6 text-slate-700 dark:text-slate-350 text-xs">
+                
+                <div className="p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2">
+                  <h4 className="font-extrabold text-slate-900 dark:text-slate-200 text-xs flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-amber-500" />
+                    How the Platform Runs
+                  </h4>
+                  <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400 font-medium">
+                    Community Hero operates as a collaborative civic network. Citizens log and verify Hyperlocal complaints, resolvers inspect and execute fixes, and Admins and Authorities coordinate city resources and launch civic quests. By working together, the community resolves local issues and tracks municipal health.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2 bg-white dark:bg-slate-900">
+                    <span className="px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                      Citizen
+                    </span>
+                    <h4 className="font-bold text-slate-900 dark:text-slate-200 text-xs mt-1">Eyes on the Street</h4>
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-normal">
+                      Reports community hazards, uploads issue photos, supports neighbor complaints to bump urgency, and casts votes to verify nearby issues.
+                    </p>
+                    <div className="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold">
+                      Rewards: +100 XP (Report), +15 XP (Verify), +10 XP (Support)
+                    </div>
+                  </div>
+
+                  <div className="p-4 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2 bg-white dark:bg-slate-900">
+                    <span className="px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-indigo-100 dark:bg-indigo-950/20 text-indigo-700 dark:text-indigo-400">
+                      Resolver
+                    </span>
+                    <h4 className="font-bold text-slate-900 dark:text-slate-200 text-xs mt-1">Action & Resolutions</h4>
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-normal font-medium">
+                      Claims open issues, flags status changes to "In Progress", writes transparent resolution logs, and uploads photographic proof of completed fixes.
+                    </p>
+                    <div className="text-[9px] text-emerald-600 dark:text-emerald-450 font-bold">
+                      Rewards: +150 XP per resolved issue
+                    </div>
+                  </div>
+
+                  <div className="p-4 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2 bg-white dark:bg-slate-900">
+                    <span className="px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-amber-100 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400">
+                      Community Admin
+                    </span>
+                    <h4 className="font-bold text-slate-900 dark:text-slate-200 text-xs mt-1">Coordinators & Managers</h4>
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-normal font-medium">
+                      Oversees specific hubs (like Housing Societies or Wards), handles pending member approval requests, assigns resolving technicians, and launches community challenges.
+                    </p>
+                  </div>
+
+                  <div className="p-4 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2 bg-white dark:bg-slate-900">
+                    <span className="px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-rose-100 dark:bg-rose-950/20 text-rose-700 dark:text-rose-400">
+                      Authority
+                    </span>
+                    <h4 className="font-bold text-slate-900 dark:text-slate-200 text-xs mt-1">Official Oversight</h4>
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-normal font-medium">
+                      Governs ward jurisdictions, officially verifies community complaints, and publishes city-wide Weekly or Daily quests on the Challenges Hub.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-4 border border-slate-200 dark:border-slate-800 rounded-xl space-y-3 bg-white dark:bg-slate-900">
+                  <h4 className="font-bold text-slate-900 dark:text-slate-200 text-xs">Civic Levels & XP Guide</h4>
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-normal font-medium font-sans">Your civic standing evolves dynamically as you gain Reputation XP. Earn points by taking actions on reports:</p>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-center pt-1 font-mono text-[9px]">
+                    <div className="p-2 bg-slate-50 dark:bg-slate-950/20 rounded border border-slate-100 dark:border-slate-800">
+                      <span className="block font-black text-slate-900 dark:text-slate-100">Level 1 (0+ XP)</span>
+                      <span className="text-slate-400">Citizen</span>
+                    </div>
+                    <div className="p-2 bg-slate-50 dark:bg-slate-950/20 rounded border border-slate-100 dark:border-slate-800">
+                      <span className="block font-black text-slate-900 dark:text-slate-100">Level 2 (100+ XP)</span>
+                      <span className="text-teal-600 dark:text-teal-400">Reporter</span>
+                    </div>
+                    <div className="p-2 bg-slate-50 dark:bg-slate-950/20 rounded border border-slate-100 dark:border-slate-800">
+                      <span className="block font-black text-slate-900 dark:text-slate-100">Level 3 (200+ XP)</span>
+                      <span className="text-emerald-600 dark:text-emerald-450">Helper</span>
+                    </div>
+                    <div className="p-2 bg-slate-50 dark:bg-slate-950/20 rounded border border-slate-100 dark:border-slate-800">
+                      <span className="block font-black text-slate-900 dark:text-slate-100">Level 4 (400+ XP)</span>
+                      <span className="text-blue-600 dark:text-blue-400">Contributor</span>
+                    </div>
+                    <div className="p-2 bg-slate-50 dark:bg-slate-950/20 rounded border border-slate-100 dark:border-slate-800">
+                      <span className="block font-black text-slate-900 dark:text-slate-100">Level 5 (600+ XP)</span>
+                      <span className="text-amber-600 dark:text-amber-400">Civic Hero</span>
+                    </div>
+                    <div className="p-2 bg-slate-50 dark:bg-slate-950/20 rounded border border-slate-100 dark:border-slate-800">
+                      <span className="block font-black text-slate-900 dark:text-slate-100">Level 6 (900+ XP)</span>
+                      <span className="text-indigo-600 dark:text-indigo-400">Champion</span>
+                    </div>
+                    <div className="p-2 bg-slate-50 dark:bg-slate-950/20 rounded border border-slate-100 dark:border-slate-800">
+                      <span className="block font-black text-slate-900 dark:text-slate-100">Level 7 (1200+ XP)</span>
+                      <span className="text-purple-650 dark:text-purple-400">Guardian</span>
+                    </div>
+                    <div className="p-2 bg-slate-50 dark:bg-slate-950/20 rounded border border-slate-100 dark:border-slate-800">
+                      <span className="block font-black text-slate-900 dark:text-slate-100">Level 8 (1500+ XP)</span>
+                      <span className="text-rose-650 dark:text-rose-455">Legend</span>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
             </div>
           )}
 

@@ -13,26 +13,30 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1; /* slate-300 */
+  background: #cbd5e1;
+  /* slate-300 */
   border-radius: 9999px;
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: #475569; /* slate-600 */
+  background: #475569;
+  /* slate-600 */
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8; /* slate-400 */
+  background: #94a3b8;
+  /* slate-400 */
 }
 
 
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: #64748b; /* slate-500 */
+  background: #64748b;
+  /* slate-500 */
 }
 
 /* Firefox scrollbar styling */
 * {
-  scrollbar-width: thin;
+  scrollbar-width: none;
   scrollbar-color: #cbd5e1 transparent;
 }
 
@@ -42,7 +46,8 @@
 
 /* Leaflet Dark Mode Support */
 .dark .leaflet-container {
-  background: #0f172a !important; /* slate-900 */
+  background: #0f172a !important;
+  /* slate-900 */
 }
 
 .dark .leaflet-tile-container {
@@ -51,9 +56,12 @@
 
 .dark .leaflet-popup-content-wrapper,
 .dark .leaflet-popup-tip {
-  background: #0f172a !important; /* slate-900 */
-  color: #f1f5f9 !important; /* slate-100 */
-  border: 1px solid #334155 !important; /* slate-700 */
+  background: #0f172a !important;
+  /* slate-900 */
+  color: #f1f5f9 !important;
+  /* slate-100 */
+  border: 1px solid #334155 !important;
+  /* slate-700 */
 }
 
 .dark .leaflet-popup-content-wrapper {
@@ -65,9 +73,11 @@
   0% {
     top: 0%;
   }
+
   50% {
     top: 100%;
   }
+
   100% {
     top: 0%;
   }
@@ -83,10 +93,12 @@
     transform: scale(0.95);
     box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7);
   }
+
   70% {
     transform: scale(1.1);
     box-shadow: 0 0 0 8px rgba(37, 99, 235, 0);
   }
+
   100% {
     transform: scale(0.95);
     box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
@@ -103,10 +115,12 @@
     stroke-opacity: 0.4;
     fill-opacity: 0.15;
   }
+
   50% {
     stroke-opacity: 0.8;
     fill-opacity: 0.3;
   }
+
   100% {
     stroke-opacity: 0.4;
     fill-opacity: 0.15;
@@ -115,4 +129,19 @@
 
 .leaflet-zone-highlight {
   animation: zone-glow 2.5s infinite ease-in-out;
+}
+
+/* Scrolling Ticker Marquee Animation */
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 30s linear infinite;
 }

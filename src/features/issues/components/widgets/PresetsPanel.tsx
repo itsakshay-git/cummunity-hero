@@ -7,7 +7,7 @@ interface PresetsPanelProps {
 }
 
 export const PresetsPanel: React.FC<PresetsPanelProps> = ({ onSelectPreset }) => {
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
 
   return (
     <div className="bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 transition-all shadow-[0_1px_3px_rgba(0,0,0,0.01)]">

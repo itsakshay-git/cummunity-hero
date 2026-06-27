@@ -54,7 +54,7 @@ export default function MapExplorer({ issues, communities, onSelectIssue, userCo
   const [mapProvider, setMapProvider] = useState<'google' | 'osm'>(() => {
     return (localStorage.getItem('default_map_provider') as 'google' | 'osm') || 'osm';
   });
-  
+
   // Center coordinates (Chandrapur default)
   const defaultCenter = userCoords || { lat: 19.9615, lng: 79.2961 };
   const [mapCenter, setMapCenter] = useState(defaultCenter);
@@ -75,15 +75,15 @@ export default function MapExplorer({ issues, communities, onSelectIssue, userCo
   // Dynamic zones based on communities and active issues
   const formattedZones: OSMZone[] = React.useMemo(() => {
     return communities.map(comm => {
-      const activeIssuesInComm = issues.filter(i => 
-        i.communityId === comm.id && 
-        i.status !== 'RESOLVED' && 
+      const activeIssuesInComm = issues.filter(i =>
+        i.communityId === comm.id &&
+        i.status !== 'RESOLVED' &&
         i.status !== 'CLOSED'
       );
-      
+
       const activeCount = activeIssuesInComm.length;
       const calculatedHealth = Math.max(0, 100 - activeCount * 15);
-      
+
       return {
         id: comm.id,
         name: comm.name,
@@ -124,7 +124,7 @@ export default function MapExplorer({ issues, communities, onSelectIssue, userCo
           sumLng += n.longitude;
           visited.add(n.id);
         });
-        
+
         clusters.push({
           latitude: sumLat / neighbors.length,
           longitude: sumLng / neighbors.length,
@@ -152,8 +152,8 @@ export default function MapExplorer({ issues, communities, onSelectIssue, userCo
   const filteredIssues = issues.filter(issue => {
     const matchesCategory = selectedCategory === 'All' || issue.category === selectedCategory;
     const matchesStatus = selectedStatus === 'All' || issue.status === selectedStatus;
-    const matchesSearch = searchQuery === '' || 
-      issue.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    const matchesSearch = searchQuery === '' ||
+      issue.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       issue.address.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesStatus && matchesSearch;
   });
@@ -190,39 +190,34 @@ export default function MapExplorer({ issues, communities, onSelectIssue, userCo
 
   return (
     <div className="space-y-4 md:space-y-6 animate-fade-in font-sans">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800/80 shadow-sm">
-        <div>
-          <h1 className="text-base font-black text-slate-900 dark:text-slate-100 tracking-tight flex items-center space-x-2">
-            <div className="p-1 bg-emerald-50 dark:bg-emerald-950/20 rounded text-emerald-600 dark:text-emerald-450">
-              <MapIcon className="w-4 h-4" />
-            </div>
+      <div className="w-full px-0 md:px-0 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight flex items-center space-x-2">
             <span>Hyperlocal Incident Map</span>
           </h1>
-          <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             Audit and track neighborhood risk zones and safety status live.
           </p>
         </div>
 
         {/* Map Provider Selector */}
-        <div className="flex items-center space-x-1 bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200/60 dark:border-slate-800/80 self-start sm:self-auto">
+        <div className="flex flex-col space-y-2 items-center md:flex-row md:space-y-0 md:space-x-2 md:self-end">
           <button
             onClick={() => setMapProvider('google')}
             disabled={!hasValidKey}
-            className={`px-2.5 py-1.5 rounded-lg text-[9px] font-bold transition-all flex items-center gap-1 cursor-pointer border-0 ${
-              mapProvider === 'google'
-                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm'
-                : 'text-slate-500 dark:text-slate-450 hover:text-slate-855 dark:hover:text-slate-200 bg-transparent disabled:opacity-50'
-            }`}
+            className={`px-2.5 py-1.5 rounded-lg text-[9px] font-bold transition-all flex items-center gap-1 cursor-pointer border-0 ${mapProvider === 'google'
+              ? 'bg-white dark:bg-white-900 text-slate-900 dark:text-slate-100 shadow-sm'
+              : 'text-slate-500 dark:text-slate-450 hover:text-slate-855 dark:hover:text-slate-200 bg-transparent disabled:opacity-50'
+              }`}
           >
             Google Maps
           </button>
           <button
             onClick={() => setMapProvider('osm')}
-            className={`px-2.5 py-1.5 rounded-lg text-[9px] font-bold transition-all flex items-center gap-1 cursor-pointer border-0 ${
-              mapProvider === 'osm'
-                ? 'bg-emerald-600 text-white shadow-sm'
-                : 'text-slate-500 dark:text-slate-450 hover:text-slate-855 dark:hover:text-slate-200 bg-transparent'
-            }`}
+            className={`px-2.5 py-1.5 rounded-lg text-[9px] font-bold transition-all flex items-center gap-1 cursor-pointer border-0 ${mapProvider === 'osm'
+              ? 'bg-emerald-600 text-white shadow-sm'
+              : 'text-slate-500 dark:text-slate-450 hover:text-slate-855 dark:hover:text-slate-200 bg-transparent'
+              }`}
           >
             OpenStreetMap (Free)
           </button>
@@ -278,30 +273,28 @@ export default function MapExplorer({ issues, communities, onSelectIssue, userCo
 
       {/* Map + List Split Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 h-[500px] md:h-[600px] relative">
-        
+
         {/* Desktop Sidebar Panel */}
         <div className="hidden lg:flex lg:col-span-4 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl p-4 shadow-sm flex-col h-full overflow-hidden">
           {/* Tab Selector */}
-          <div className="flex space-x-1 p-1 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-850/80 mb-3.5">
+          <div className="flex space-x-1 p-1 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-none mb-3.5">
             <button
               type="button"
               onClick={() => setSidebarTab('incidents')}
-              className={`flex-1 py-1.5 rounded-lg text-[10px] font-black transition-all border-0 cursor-pointer ${
-                sidebarTab === 'incidents'
-                  ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-450 shadow-sm'
-                  : 'text-slate-500 dark:text-slate-455 hover:text-slate-850 dark:hover:text-slate-200 bg-transparent'
-              }`}
+              className={`flex-1 py-1.5 rounded-lg text-[10px] font-black transition-all border-0 cursor-pointer ${sidebarTab === 'incidents'
+                ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-450 shadow-sm'
+                : 'text-slate-500 dark:text-slate-455 hover:text-slate-850 dark:hover:text-slate-200 bg-transparent'
+                }`}
             >
               Incidents List ({filteredIssues.length})
             </button>
             <button
               type="button"
               onClick={() => setSidebarTab('zones')}
-              className={`flex-1 py-1.5 rounded-lg text-[10px] font-black transition-all border-0 cursor-pointer ${
-                sidebarTab === 'zones'
-                  ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-450 shadow-sm'
-                  : 'text-slate-500 dark:text-slate-455 hover:text-slate-850 dark:hover:text-slate-200 bg-transparent'
-              }`}
+              className={`flex-1 py-1.5 rounded-lg text-[10px] font-black transition-all border-0 cursor-pointer ${sidebarTab === 'zones'
+                ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-450 shadow-sm'
+                : 'text-slate-500 dark:text-slate-455 hover:text-slate-850 dark:hover:text-slate-200 bg-transparent'
+                }`}
             >
               Civic Zones ({formattedZones.length})
             </button>
@@ -357,9 +350,8 @@ export default function MapExplorer({ issues, communities, onSelectIssue, userCo
               type="button"
               onClick={() => setShowZonesOverlay(!showZonesOverlay)}
               title={showZonesOverlay ? "Hide Safety Zones" : "Show Safety Zones"}
-              className={`bg-white/95 dark:bg-slate-900/95 backdrop-blur-md hover:bg-slate-100 dark:hover:bg-slate-800 p-2.5 rounded-xl shadow-md border border-slate-200/80 dark:border-slate-800/80 transition-all cursor-pointer flex items-center justify-center focus:outline-none ${
-                showZonesOverlay ? 'text-emerald-600 dark:text-emerald-400 ring-2 ring-emerald-500/10' : 'text-slate-400'
-              }`}
+              className={`bg-white/95 dark:bg-slate-900/95 backdrop-blur-md hover:bg-slate-100 dark:hover:bg-slate-800 p-2.5 rounded-xl shadow-md border border-slate-200/80 dark:border-slate-800/80 transition-all cursor-pointer flex items-center justify-center focus:outline-none ${showZonesOverlay ? 'text-emerald-600 dark:text-emerald-400 ring-2 ring-emerald-500/10' : 'text-slate-400'
+                }`}
             >
               <Shield className="w-4 h-4" />
             </button>
@@ -381,7 +373,7 @@ export default function MapExplorer({ issues, communities, onSelectIssue, userCo
             />
           ) : (
             <GoogleMapSection height="100%" fallbackMessage="To unlock the interactive incident map, connect your key. You will see markers mapped live and can trigger neighborhood coordinates directly.">
-              <MapLoader 
+              <MapLoader
                 issues={filteredIssues}
                 center={mapCenter}
                 zoom={mapZoom}
@@ -396,16 +388,16 @@ export default function MapExplorer({ issues, communities, onSelectIssue, userCo
           )}
 
           {/* Mobile Bottom Sheet Drawer overlay */}
-          <div 
+          <div
             className="lg:hidden absolute bottom-0 left-0 right-0 z-[400] bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 rounded-t-2xl shadow-[0_-4px_15px_rgba(0,0,0,0.15)] flex flex-col transition-all duration-300 ease-in-out overflow-hidden"
-            style={{ height: mobileDrawerExpanded ? '75%' : '60px' }}
+            style={{ height: mobileDrawerExpanded ? '70%' : '48px' }}
           >
             {/* Drawer Swipe Handle */}
-            <div 
-              className="w-full py-3.5 flex flex-col items-center justify-center cursor-pointer select-none bg-slate-50/50 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-850/50"
+            <div
+              className="w-full py-4 flex flex-col items-center justify-center cursor-pointer select-none bg-slate-50/50 dark:bg-slate-950/20 border-b border-slate-100 dark:border-slate-850/50"
               onClick={() => setMobileDrawerExpanded(!mobileDrawerExpanded)}
             >
-              <div className="w-10 h-1 bg-slate-300 dark:bg-slate-700 rounded-full" />
+              <div className="w-8 h-0.5 bg-slate-300 dark:bg-slate-700 rounded-full" />
               <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-wider flex items-center gap-1">
                 <span>🔍</span>
                 {mobileDrawerExpanded ? 'Hide Wards & Issues' : `Incidents & Risk Zones (${filteredIssues.length})`}
@@ -414,13 +406,13 @@ export default function MapExplorer({ issues, communities, onSelectIssue, userCo
 
             {/* Expanded Content */}
             {mobileDrawerExpanded && (
-              <div className="flex-grow overflow-hidden flex flex-col p-4 space-y-3.5">
+              <div className="flex-grow overflow-hidden flex flex-col p-2 md:p-4 space-y-3.5">
                 {/* Filters */}
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <select
                     value={selectedCategory}
                     onChange={(e) => setSelectedCategory(e.target.value as any)}
-                    className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-2 py-1.5 text-[9px] font-bold dark:text-slate-300 focus:outline-none"
+                    className="flex-1 w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-2 py-2 text-xs font-bold dark:text-slate-300 focus:outline-none"
                   >
                     <option value="All" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">All Categories</option>
                     {CATEGORIES.filter(c => c !== 'All').map(cat => (
@@ -430,7 +422,7 @@ export default function MapExplorer({ issues, communities, onSelectIssue, userCo
                   <select
                     value={selectedStatus}
                     onChange={(e) => setSelectedStatus(e.target.value as any)}
-                    className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-2 py-1.5 text-[9px] font-bold dark:text-slate-300 focus:outline-none"
+                    className="flex-1 w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-2 py-2 text-xs font-bold dark:text-slate-300 focus:outline-none"
                   >
                     <option value="All" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">All Statuses</option>
                     {STATUSES.filter(s => s !== 'All').map(stat => (
@@ -444,22 +436,17 @@ export default function MapExplorer({ issues, communities, onSelectIssue, userCo
                   <button
                     type="button"
                     onClick={() => setSidebarTab('incidents')}
-                    className={`flex-1 py-1 rounded-lg text-[9px] font-black border-0 cursor-pointer ${
-                      sidebarTab === 'incidents'
-                        ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-450 shadow-sm'
-                        : 'text-slate-500 dark:text-slate-455 bg-transparent'
-                    }`}
+                    className={`flex-1 py-1.5 rounded-lg text-[9px] font-black border-0 cursor-pointer ${sidebarTab === 'incidents'
+                      ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-450 shadow-sm'
+                      : 'text-slate-500 dark:text-slate-455 bg-transparent'
+                      }`}
                   >
                     Incidents ({filteredIssues.length})
                   </button>
                   <button
                     type="button"
                     onClick={() => setSidebarTab('zones')}
-                    className={`flex-1 py-1 rounded-lg text-[9px] font-black border-0 cursor-pointer ${
-                      sidebarTab === 'zones'
-                        ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-450 shadow-sm'
-                        : 'text-slate-500 dark:text-slate-455 bg-transparent'
-                    }`}
+                    className={`px-2 py-1.5 rounded-lg text-xs font-black border-0 cursor-pointer ${sidebarTab === 'zones' ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-450 shadow-sm' : 'text-slate-500 dark:text-slate-455 bg-transparent'}`}
                   >
                     Risk Zones ({formattedZones.length})
                   </button>
@@ -518,45 +505,44 @@ interface IncidentCardRowProps {
 
 function IncidentCardRow({ issue, onClick, isActive }: IncidentCardRowProps) {
   const categoryEmojis: Record<string, string> = {
-    'Pothole': '🕳️',
-    'Garbage': '🗑️',
-    'Water Leakage': '💧',
-    'Streetlight': '💡',
-    'Drainage': '🌊',
-    'Road Damage': '🚧',
-    'Public Safety': '⚠️',
-    'Other': '📁'
+    Pothole: "🕳️",
+    Garbage: "🗑️",
+    "Water Leakage": "💧",
+    Streetlight: "💡",
+    Drainage: "🌊",
+    "Road Damage": "🚧",
+    "Public Safety": "⚠️",
+    Other: "📁",
   };
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`w-full text-left p-3 rounded-2xl border bg-white dark:bg-slate-900 transition-all duration-200 cursor-pointer flex items-start gap-3 hover:-translate-y-0.5 hover:shadow-md relative group ${
-        isActive 
-          ? 'border-emerald-500 dark:border-emerald-500 ring-2 ring-emerald-500/10 shadow-[0_4px_20px_rgba(16,185,129,0.06)]' 
-          : 'border-slate-100 dark:border-slate-800/80 hover:border-slate-350 dark:hover:border-slate-700 bg-white dark:bg-slate-900/50'
-      }`}
+      className={`w-full overflow-hidden rounded-2xl border bg-white dark:bg-slate-900 transition-all duration-200 cursor-pointer flex flex-col sm:flex-row gap-2 p-2 sm:p-2 hover:-translate-y-0.5 hover:shadow-md relative group ${isActive
+        ? "border-emerald-500 dark:border-emerald-500 ring-2 ring-emerald-500/10 shadow-[0_4px_20px_rgba(16,185,129,0.06)]"
+        : "border-slate-100 dark:border-slate-800/80 hover:border-slate-350 dark:hover:border-slate-700 bg-white dark:bg-slate-900/50"
+        }`}
     >
-      {/* Left Column: Image Thumbnail or Emoji Icon */}
-      <div className="flex-shrink-0">
+      {/* Image / Emoji */}
+      <div className="flex-shrink-0 self-center sm:self-start">
         {issue.imageUrl ? (
-          <img 
-            src={issue.imageUrl} 
-            alt={issue.title} 
-            className="w-14 h-14 object-cover rounded-xl border border-slate-100 dark:border-slate-800 shadow-[0_1px_3px_rgba(0,0,0,0.02)]"
+          <img
+            src={issue.imageUrl}
+            alt={issue.title}
+            className="w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-xl object-cover border-4 border-white dark:border-slate-900 shadow-xl bg-slate-50 dark:bg-slate-800"
           />
         ) : (
-          <div className="w-14 h-14 rounded-xl flex items-center justify-center text-xl bg-slate-50 dark:bg-slate-950 border border-slate-200/50 dark:border-slate-800 shadow-[0_1px_2px_rgba(0,0,0,0.01)]">
-            {categoryEmojis[issue.category] || '📁'}
+          <div className="w-14 h-14 sm:w-20 sm:h-20 flex items-center justify-center text-xl bg-slate-50 dark:bg-slate-950 border border-slate-200/50 dark:border-slate-800 rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.01)]">
+            {categoryEmojis[issue.category] || "📁"}
           </div>
         )}
       </div>
 
-      {/* Right Column: Title and details */}
-      <div className="flex-grow min-w-0 space-y-1.5 pl-0.5">
-        <div className="flex items-center justify-between gap-2.5">
-          <span className="text-[9px] font-mono font-bold tracking-wider uppercase text-slate-400 dark:text-slate-400 truncate">
+      {/* Text content */}
+      <div className="flex-1 min-w-0 space-y-1.5">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[8px] font-mono font-bold uppercase text-slate-400 dark:text-slate-400 truncate">
             {issue.category}
           </span>
           <Badge variant="severity" value={issue.severity}>
@@ -564,17 +550,19 @@ function IncidentCardRow({ issue, onClick, isActive }: IncidentCardRowProps) {
           </Badge>
         </div>
 
-        <h4 className="font-extrabold text-[12px] text-slate-900 dark:text-slate-100 leading-tight line-clamp-1 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+        <h4 className="font-extrabold text-sm md:text-xs text-slate-900 dark:text-slate-100 line-clamp-2 truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
           {issue.title}
         </h4>
 
-        <p className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-1">
+        <p className="text-[8px] text-slate-500 dark:text-slate-400 line-clamp-1 truncate">
           📍 {issue.address}
         </p>
 
-        <div className="flex items-center justify-between pt-1.5 border-t border-slate-100/50 dark:border-slate-850/50 text-[10px] text-slate-500 dark:text-slate-400">
-          <div className="flex items-center space-x-2.5 font-semibold">
-            <span>Score: <strong className="text-slate-800 dark:text-slate-200 font-bold">{issue.priorityScore}</strong></span>
+        <div className="flex items-center justify-between pt-1.5 border-t border-slate-100/50 dark:border-slate-850/50 text-[8px] text-slate-500 dark:text-slate-400">
+          <div className="flex items-center space-x-2 font-semibold">
+            <span>
+              Score: <strong className="text-slate-800 dark:text-slate-200 font-bold">{issue.priorityScore}</strong>
+            </span>
             {issue.supporterCount !== undefined && (
               <span className="flex items-center gap-0.5 text-slate-400 dark:text-slate-500">
                 ❤️ <span className="text-slate-600 dark:text-slate-400">{issue.supporterCount}</span>
@@ -586,10 +574,10 @@ function IncidentCardRow({ issue, onClick, isActive }: IncidentCardRowProps) {
               </span>
             )}
           </div>
-          <Badge variant="status" value={issue.status}>
-            {issue.status.replace('_', ' ')}
-          </Badge>
         </div>
+        <Badge variant="status" value={issue.status}>
+          {issue.status.replace("_", " ")}
+        </Badge>
       </div>
     </button>
   );
@@ -607,24 +595,23 @@ function ZoneCardRow({ zone, onClick, isActive }: ZoneCardRowProps) {
   const isWarning = count >= 2 && count < 5;
   const riskLabel = isCritical ? 'High Risk' : isWarning ? 'Moderate' : 'Safe Zone';
   const colorClass = isCritical ? 'text-rose-600 bg-rose-50 dark:bg-rose-905/20 border-rose-200 dark:border-rose-900/30' :
-                     isWarning ? 'text-amber-600 bg-amber-50 dark:bg-amber-905/20 border-amber-200 dark:border-amber-900/30' :
-                     'text-emerald-600 bg-emerald-50 dark:bg-emerald-905/20 border-emerald-200 dark:border-emerald-900/30';
-  
+    isWarning ? 'text-amber-600 bg-amber-50 dark:bg-amber-905/20 border-amber-200 dark:border-amber-900/30' :
+      'text-emerald-600 bg-emerald-50 dark:bg-emerald-905/20 border-emerald-200 dark:border-emerald-900/30';
+
   const barColor = isCritical ? 'bg-red-500' : isWarning ? 'bg-amber-500' : 'bg-emerald-500';
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`w-full text-left p-3.5 rounded-2xl border bg-white dark:bg-slate-900 transition-all duration-200 cursor-pointer flex flex-col gap-2.5 hover:-translate-y-0.5 hover:shadow-md relative group ${
-        isActive 
-          ? 'border-emerald-500 dark:border-emerald-500 ring-2 ring-emerald-500/10 shadow-[0_4px_20px_rgba(16,185,129,0.06)]' 
-          : 'border-slate-100 dark:border-slate-800/80 hover:border-slate-350 dark:hover:border-slate-700 bg-white dark:bg-slate-900/50'
-      }`}
+      className={`w-full text-left p-3.5 rounded-2xl border bg-white dark:bg-slate-900 transition-all duration-200 cursor-pointer flex flex-col gap-2.5 hover:-translate-y-0.5 hover:shadow-md relative group ${isActive
+        ? 'border-emerald-500 dark:border-emerald-500 ring-2 ring-emerald-500/10 shadow-[0_4px_20px_rgba(16,185,129,0.06)]'
+        : 'border-slate-100 dark:border-slate-800/80 hover:border-slate-350 dark:hover:border-slate-700 bg-white dark:bg-slate-900/50'
+        }`}
     >
       <div className="flex items-start justify-between gap-3 w-full">
         <div className="min-w-0">
-          <h4 className="font-extrabold text-[12px] text-slate-900 dark:text-slate-100 line-clamp-1 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+          <h4 className="font-extrabold text-[12px] text-slate-900 dark:text-slate-100 line-clamp-1 truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
             🏢 {zone.name}
           </h4>
           <p className="text-[10px] text-slate-400 dark:text-slate-400">{zone.areaName}</p>
@@ -698,9 +685,9 @@ function MapLoader({
             title={issue.title}
             onClick={() => onMarkerClick(issue)}
           >
-            <Pin 
-              background={color} 
-              borderColor="#FFFFFF" 
+            <Pin
+              background={color}
+              borderColor="#FFFFFF"
               glyphColor="#FFFFFF"
               scale={activeIssue?.id === issue.id ? 1.2 : 1.0}
             />
@@ -715,7 +702,7 @@ function MapLoader({
         >
           <div className="relative flex items-center justify-center pointer-events-none">
             <div className="absolute w-8 h-8 rounded-full bg-blue-500/30 animate-user-pulse"></div>
-            <div className="relative w-4 h-4 rounded-full bg-blue-600 border-2 border-white shadow-md"></div>
+            <div className="absolute -bottom-2 -right-2 bg-emerald-600 text-white font-mono text-xs w-6 h-6 rounded-full flex items-center justify-center font-bold border-2 border-white shadow-md"></div>
           </div>
         </AdvancedMarker>
       )}
@@ -728,15 +715,15 @@ function MapLoader({
         >
           <div className="p-2 max-w-[220px] space-y-2 text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-900 rounded-lg">
             {activeIssue.imageUrl && (
-              <div className="h-24 w-full rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800">
-                <img 
-                  src={activeIssue.imageUrl} 
-                  alt={activeIssue.title} 
+              <div className="h-36 sm:h-48 md:h-64 relative bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                <img
+                  src={activeIssue.imageUrl}
+                  alt={activeIssue.title}
                   className="w-full h-full object-cover"
                 />
               </div>
             )}
-            
+
             <div className="space-y-1">
               <div className="flex items-center justify-between text-[9px] font-mono">
                 <span className="font-extrabold uppercase text-emerald-700 dark:text-emerald-455 bg-emerald-50 dark:bg-emerald-950/40 px-1 py-0.2 rounded">
@@ -750,7 +737,7 @@ function MapLoader({
               <h4 className="font-extrabold text-xs text-slate-900 dark:text-slate-100 leading-tight">
                 {activeIssue.title}
               </h4>
-              
+
               <p className="text-[10px] text-slate-550 dark:text-slate-400 line-clamp-1 leading-snug">
                 {activeIssue.address}
               </p>

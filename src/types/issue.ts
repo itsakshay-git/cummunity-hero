@@ -74,6 +74,10 @@ export interface Issue {
   city?: string;
   district?: string;
   state?: string;
+  // New social tracking arrays
+  verifiedUserIds?: string[];
+  spamUserIds?: string[];
+  resolvedUserIds?: string[];
 }
 
 export interface IssueVerification {

@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { doc, getDoc, setDoc, collection, getDocs, writeBatch, updateDoc, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, getDocs, writeBatch, updateDoc, deleteDoc, query, where, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../services/firebase/firebaseClient';
-import { mockUsers, mockCommunities, mockIssues, mockVerifications, mockComments, mockActivities, mockFeedPosts } from '../lib/mockData';
-import { User, Issue, Community, IssueVerification, UserRole, IssueStatus, Comment, UserActivity, Notification } from '../types';
+import { mockUsers, mockCommunities, mockIssues, mockVerifications, mockComments, mockActivities, mockFeedPosts, mockChallenges } from '../lib/mockData';
+import { User, Issue, Community, IssueVerification, UserRole, IssueStatus, Comment, UserActivity, Notification, CivicChallenge } from '../types';
 import { useFeedPosts } from '../features/feed/hooks/useFeedPosts';
 import { getLevelInfo } from '../features/feed/utils';
 import { communitiesService } from '../features/communities/services/communitiesService';
@@ -11,6 +11,25 @@ import { getDistanceMeters } from '../lib/geoUtils';
 
 
 // Helper to recursively sanitize objects for Firestore by converting/stripping undefined values
+
+// Helper to create a status change notification for the original reporter
+const createStatusChangeNotification = async (issueId: string, newStatus: IssueStatus, reporterId: string, issueTitle: string) => {
+  if (!reporterId) return;
+  // Avoid sending notification to the user performing the update
+  if (currentUser && reporterId === currentUser.id) return;
+  const notifId = `notif_${reporterId}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+  const newNotif: Notification = {
+    id: notifId,
+    userId: reporterId,
+    title: 'Issue Status Updated',
+    body: `Your issue "${issueTitle}" is now ${newStatus}.`,
+    type: 'STATUS_CHANGE',
+    targetId: issueId,
+    isRead: false,
+    createdAt: new Date().toISOString()
+  };
+  await setDoc(doc(db, 'notifications', notifId), cleanUndefined(newNotif));
+};
 const cleanUndefined = (obj: any): any => {
   if (obj === undefined) return null;
   if (obj === null) return null;
@@ -38,7 +57,7 @@ const getInitialStateFromHash = () => {
   const [path, queryString] = hash.slice(2).split('?');
   const params = new URLSearchParams(queryString || '');
   const id = params.get('id');
-  
+
   if (path === 'issue-details') {
     return { tab: 'issue-details', issueId: id, communityId: 'all', viewingUserId: null };
   }
@@ -49,14 +68,48 @@ const getInitialStateFromHash = () => {
     const userId = params.get('userId') || params.get('id');
     return { tab: 'profile', issueId: null, communityId: 'all', viewingUserId: userId };
   }
-  
+
   const validPaths = ['feed', 'dashboard', 'report', 'map-explorer', 'issues', 'leaderboard', 'challenges', 'settings'];
   if (validPaths.includes(path)) {
     const defaultCommunityId = (path === 'issues' || path === 'dashboard') ? 'city' : 'nearby_5';
     return { tab: path, issueId: null, communityId: defaultCommunityId, viewingUserId: null };
   }
-  
+
   return { tab: '404', issueId: null, communityId: 'all', viewingUserId: null };
+};
+
+const playNotificationSound = () => {
+  try {
+    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+
+    // Tone beep 1 (pitch: 800Hz)
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(800, ctx.currentTime);
+    gain1.gain.setValueAtTime(0.06, ctx.currentTime);
+    gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+    osc1.start();
+    osc1.stop(ctx.currentTime + 0.15);
+
+    // Tone beep 2 (pitch: 1200Hz, slightly offset)
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(1200, ctx.currentTime + 0.08);
+    gain2.gain.setValueAtTime(0.06, ctx.currentTime + 0.08);
+    gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.start(ctx.currentTime + 0.08);
+    osc2.stop(ctx.currentTime + 0.25);
+  } catch (err) {
+    console.warn('Notification audio synth blocked or unsupported:', err);
+  }
 };
 
 export function useAppState() {
@@ -98,15 +151,28 @@ export function useAppState() {
   const [verifications, setVerifications] = useState(mockVerifications);
   const [comments, setComments] = useState<Comment[]>(mockComments);
   const [activities, setActivities] = useState<UserActivity[]>(mockActivities);
+  const [challenges, setChallenges] = useState<CivicChallenge[]>(mockChallenges);
 
   // Real Auth & Profile States
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentRole, setCurrentRole] = useState<UserRole>('Citizen');
   const [selectedCommunityId, setSelectedCommunityId] = useState<string>(() => getInitialStateFromHash().communityId);
-  
+
   // Hyperlocal filter and notification states
   const [activeLocationFilter, setActiveLocationFilter] = useState<string>('My Location');
   const [notifications, setNotifications] = useState<Notification[]>([]);
+
+  // Sound Player Effect: play chime when notifications length increases with unread items
+  const prevNotifCount = useRef<number | null>(null);
+  useEffect(() => {
+    if (appStarted && prevNotifCount.current !== null && notifications.length > prevNotifCount.current) {
+      const hasNewUnread = notifications.some(n => !n.isRead);
+      if (hasNewUnread) {
+        playNotificationSound();
+      }
+    }
+    prevNotifCount.current = notifications.length;
+  }, [notifications, appStarted]);
 
   // Auth UI Controls
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -177,12 +243,12 @@ export function useAppState() {
     };
 
     window.addEventListener('hashchange', handleHashChange);
-    
+
     // Default fallback to #/feed if hash is completely empty
     if (!window.location.hash || window.location.hash === '#/') {
       window.location.hash = '#/feed';
     }
-    
+
     return () => {
       window.removeEventListener('hashchange', handleHashChange);
     };
@@ -224,49 +290,10 @@ export function useAppState() {
 
             const defaultProfile: User = matchedMockUser
               ? {
-                  ...matchedMockUser,
-                  id: firebaseUser.uid
-                }
-              : {
-                  id: firebaseUser.uid,
-                  name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Civic Hero',
-                  email: firebaseUser.email || 'sandbox@communityhero.net',
-                  photoUrl: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(firebaseUser.uid)}`,
-                  role: 'Citizen',
-                  joinedCommunities: ['comm_1'],
-                  reputationScore: 100,
-                  points: 100,
-                  reportsCreated: 0,
-                  reportsVerified: 0,
-                  reportsResolved: 0,
-                  city: 'Chandrapur',
-                  district: 'Chandrapur',
-                  state: 'Maharashtra',
-                  location: 'Chandrapur, Maharashtra',
-                  createdAt: new Date().toISOString(),
-                  updatedAt: new Date().toISOString(),
-                };
-            try {
-              await setDoc(userDocRef, cleanUndefined(defaultProfile));
-            } catch (writeErr) {
-              console.warn('Could not write user profile to Firestore (using local fallback):', writeErr);
-            }
-            setCurrentUser(defaultProfile);
-            setCurrentRole(defaultProfile.role);
-            setAppStarted(true);
-          }
-        } catch (e) {
-          console.error('Error fetching/creating user profile from Firestore:', e);
-          const matchedMockUser = mockUsers.find(
-            (u) => u.email.toLowerCase() === (firebaseUser.email || '').toLowerCase()
-          );
-
-          const fallbackProfile: User = matchedMockUser
-            ? {
                 ...matchedMockUser,
                 id: firebaseUser.uid
               }
-            : {
+              : {
                 id: firebaseUser.uid,
                 name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Civic Hero',
                 email: firebaseUser.email || 'sandbox@communityhero.net',
@@ -285,6 +312,45 @@ export function useAppState() {
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
               };
+            try {
+              await setDoc(userDocRef, cleanUndefined(defaultProfile));
+            } catch (writeErr) {
+              console.warn('Could not write user profile to Firestore (using local fallback):', writeErr);
+            }
+            setCurrentUser(defaultProfile);
+            setCurrentRole(defaultProfile.role);
+            setAppStarted(true);
+          }
+        } catch (e) {
+          console.error('Error fetching/creating user profile from Firestore:', e);
+          const matchedMockUser = mockUsers.find(
+            (u) => u.email.toLowerCase() === (firebaseUser.email || '').toLowerCase()
+          );
+
+          const fallbackProfile: User = matchedMockUser
+            ? {
+              ...matchedMockUser,
+              id: firebaseUser.uid
+            }
+            : {
+              id: firebaseUser.uid,
+              name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Civic Hero',
+              email: firebaseUser.email || 'sandbox@communityhero.net',
+              photoUrl: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(firebaseUser.uid)}`,
+              role: 'Citizen',
+              joinedCommunities: ['comm_1'],
+              reputationScore: 100,
+              points: 100,
+              reportsCreated: 0,
+              reportsVerified: 0,
+              reportsResolved: 0,
+              city: 'Chandrapur',
+              district: 'Chandrapur',
+              state: 'Maharashtra',
+              location: 'Chandrapur, Maharashtra',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            };
           setCurrentUser(fallbackProfile);
           setCurrentRole(fallbackProfile.role);
           setAppStarted(true);
@@ -397,72 +463,69 @@ export function useAppState() {
     fetchAndSeedActivities();
   }, [appStarted]);
 
-  // Fetch & Seed Notifications from Firestore
+  // Fetch & Seed Notifications from Firestore (Real-time snapshot listener)
   useEffect(() => {
-    const fetchNotifications = async () => {
-      if (!appStarted || !currentUser) return;
-      try {
-        const querySnapshot = await getDocs(collection(db, 'notifications'));
-        const loaded: Notification[] = [];
-        querySnapshot.forEach((doc) => {
-          const data = doc.data() as Notification;
-          if (data.userId === currentUser.id) {
-            loaded.push(data);
+    if (!appStarted || !currentUser) return;
+
+    const q = query(collection(db, 'notifications'), where('userId', '==', currentUser.id));
+
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      const loaded: Notification[] = [];
+      snapshot.forEach((doc) => {
+        loaded.push(doc.data() as Notification);
+      });
+
+      // Seed 3 welcome alerts for the logged-in sandbox user if none exist
+      if (loaded.length === 0) {
+        console.log('Seeding default notifications for current user...');
+        const batch = writeBatch(db);
+        const welcomeNotifs: Notification[] = [
+          {
+            id: `notif_${currentUser.id}_welcome`,
+            userId: currentUser.id,
+            title: 'Welcome to Community Hero!',
+            body: 'Thank you for joining our social civic platform. Report issues, cast verifications, and cooperate with neighbors to earn reputation!',
+            type: 'ROLE_PROMOTED',
+            targetId: currentUser.id,
+            isRead: false,
+            createdAt: new Date(Date.now() - 3600000 * 24).toISOString() // 1 day ago
+          },
+          {
+            id: `notif_${currentUser.id}_leakage`,
+            userId: currentUser.id,
+            title: 'Water Leakage Alert near Block C',
+            body: 'A Water Leakage report in Green Park Society has been marked IN_PROGRESS by resolver Rohan Patil.',
+            type: 'STATUS_CHANGE',
+            targetId: 'issue_1',
+            isRead: false,
+            createdAt: new Date(Date.now() - 3600000 * 4).toISOString() // 4 hours ago
+          },
+          {
+            id: `notif_${currentUser.id}_pothole`,
+            userId: currentUser.id,
+            title: 'Critical Pothole reported in Shivajinagar',
+            body: 'A new Critical Pothole has been reported on High Street road. Drive safely!',
+            type: 'NEW_ISSUE',
+            targetId: 'issue_4',
+            isRead: false,
+            createdAt: new Date(Date.now() - 3600000 * 2).toISOString() // 2 hours ago
           }
+        ];
+
+        welcomeNotifs.forEach((n) => {
+          batch.set(doc(db, 'notifications', n.id), n);
+          loaded.push(n);
         });
-
-        // Seed 3 welcome alerts for the logged-in sandbox user if none exist
-        if (loaded.length === 0) {
-          console.log('Seeding default notifications for current user...');
-          const batch = writeBatch(db);
-          const welcomeNotifs: Notification[] = [
-            {
-              id: `notif_${currentUser.id}_welcome`,
-              userId: currentUser.id,
-              title: 'Welcome to Community Hero!',
-              body: 'Thank you for joining our social civic platform. Report issues, cast verifications, and cooperate with neighbors to earn reputation!',
-              type: 'ROLE_PROMOTED',
-              targetId: currentUser.id,
-              isRead: false,
-              createdAt: new Date(Date.now() - 3600000 * 24).toISOString() // 1 day ago
-            },
-            {
-              id: `notif_${currentUser.id}_leakage`,
-              userId: currentUser.id,
-              title: 'Water Leakage Alert near Block C',
-              body: 'A Water Leakage report in Green Park Society has been marked IN_PROGRESS by resolver Rohan Patil.',
-              type: 'STATUS_CHANGE',
-              targetId: 'issue_1',
-              isRead: false,
-              createdAt: new Date(Date.now() - 3600000 * 4).toISOString() // 4 hours ago
-            },
-            {
-              id: `notif_${currentUser.id}_pothole`,
-              userId: currentUser.id,
-              title: 'Critical Pothole reported in Shivajinagar',
-              body: 'A new Critical Pothole has been reported on High Street road. Drive safely!',
-              type: 'NEW_ISSUE',
-              targetId: 'issue_4',
-              isRead: false,
-              createdAt: new Date(Date.now() - 3600000 * 2).toISOString() // 2 hours ago
-            }
-          ];
-
-          welcomeNotifs.forEach((n) => {
-            batch.set(doc(db, 'notifications', n.id), n);
-            loaded.push(n);
-          });
-          await batch.commit();
-        }
-
-        loaded.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-        setNotifications(loaded);
-      } catch (err) {
-        console.warn('Could not load notifications from Firestore:', err);
+        await batch.commit();
       }
-    };
 
-    fetchNotifications();
+      loaded.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      setNotifications(loaded);
+    }, (err) => {
+      console.warn('Firestore notifications subscription error:', err);
+    });
+
+    return () => unsubscribe();
   }, [appStarted, currentUser]);
 
   // Fetch & Seed Communities from Firestore
@@ -495,6 +558,36 @@ export function useAppState() {
     };
 
     fetchAndSeedCommunities();
+  }, [appStarted]);
+
+  // Fetch & Seed Challenges from Firestore
+  useEffect(() => {
+    const fetchAndSeedChallenges = async () => {
+      if (!appStarted) return;
+      try {
+        const querySnapshot = await getDocs(collection(db, 'challenges'));
+        if (querySnapshot.empty) {
+          console.log('Seeding default challenges into Firestore...');
+          const batch = writeBatch(db);
+          mockChallenges.forEach((c) => {
+            batch.set(doc(db, 'challenges', c.id), c);
+          });
+          await batch.commit();
+          setChallenges(mockChallenges);
+        } else {
+          const loaded: CivicChallenge[] = [];
+          querySnapshot.forEach((doc) => {
+            loaded.push(doc.data() as CivicChallenge);
+          });
+          setChallenges(loaded);
+        }
+      } catch (err) {
+        console.warn('Could not load challenges from Firestore (using local fallback mock data):', err);
+        setChallenges(mockChallenges);
+      }
+    };
+
+    fetchAndSeedChallenges();
   }, [appStarted]);
 
   // Fetch & Seed Issues from Firestore
@@ -675,7 +768,7 @@ export function useAppState() {
       if (currentUser) {
         let closestCity = 'Chandrapur';
         let minDistance = Infinity;
-        
+
         const cityCoords: Record<string, { lat: number; lng: number }> = {
           'Chandrapur': { lat: 19.9615, lng: 79.2961 },
           'Pune': { lat: 18.5204, lng: 73.8567 },
@@ -836,7 +929,7 @@ export function useAppState() {
       }
 
       await setDoc(doc(db, 'issues', newId), cleanUndefined(newIssue));
-      
+
       const feedPostId = `post_${newId}`;
       const newFeedPost = {
         id: feedPostId,
@@ -893,7 +986,7 @@ export function useAppState() {
       console.error('[handleCreateIssue] Error saving issue/feed post/notifications to Firestore:', e);
       alert(`Failed to save report to Firestore: ${e.message || e.toString()}\n\nMake sure your Firebase security rules allow writing to 'issues', 'feed_posts', and 'notifications', and that you have clicked "Bypass Cache & Clear Queue" in Settings if your write queue is exhausted.`);
     }
-    
+
     setCommunities(prevComms => prevComms.map(c => {
       if (c.id === newIssueData.communityId) {
         const updatedTotal = c.totalIssues + 1;
@@ -1023,7 +1116,7 @@ export function useAppState() {
           if (c.id === targetIssue.communityId) {
             const updatedTotal = Math.max(0, c.totalIssues - 1);
             const updatedResolved = targetIssue.status === 'RESOLVED' ? Math.max(0, c.resolvedIssues - 1) : c.resolvedIssues;
-            updateDoc(doc(db, 'communities', c.id), { 
+            updateDoc(doc(db, 'communities', c.id), {
               totalIssues: updatedTotal,
               resolvedIssues: updatedResolved
             }).catch(e => console.warn('Could not update total issues in Firestore:', e));
@@ -1080,6 +1173,22 @@ export function useAppState() {
     }
   }, [currentUser]);
 
+  const handleCreateChallenge = useCallback(async (newChallengeData: Omit<CivicChallenge, 'id'>) => {
+    const newId = `ch_${Date.now()}`;
+    const newChallenge: CivicChallenge = {
+      id: newId,
+      ...newChallengeData
+    };
+
+    setChallenges(prev => [...prev, newChallenge]);
+
+    try {
+      await setDoc(doc(db, 'challenges', newId), cleanUndefined(newChallenge));
+    } catch (e) {
+      console.error('Error saving challenge to Firestore:', e);
+    }
+  }, []);
+
   const handleUpdateCommunityDetails = useCallback(async (communityId: string, updates: Partial<Community>) => {
     setCommunities(prev => prev.map(c => c.id === communityId ? { ...c, ...updates } : c));
     try {
@@ -1101,9 +1210,9 @@ export function useAppState() {
       const updatedPending = targetComm.pendingMemberRequests?.includes(currentUser.id)
         ? targetComm.pendingMemberRequests
         : [...(targetComm.pendingMemberRequests || []), currentUser.id];
-      
+
       setCommunities(prev => prev.map(c => c.id === id ? { ...c, pendingMemberRequests: updatedPending } : c));
-      
+
       try {
         await updateDoc(doc(db, 'communities', id), {
           pendingMemberRequests: updatedPending,
@@ -1135,7 +1244,7 @@ export function useAppState() {
       const updatedJoined = currentUser.joinedCommunities.includes(id)
         ? currentUser.joinedCommunities
         : [...currentUser.joinedCommunities, id];
-      
+
       updateUserProfile({
         joinedCommunities: updatedJoined
       });
@@ -1145,7 +1254,7 @@ export function useAppState() {
           const updatedMembers = c.memberIds.includes(currentUser.id)
             ? c.memberIds
             : [...c.memberIds, currentUser.id];
-          
+
           communitiesService.updateCommunityMembers(id, updatedMembers)
             .catch(e => console.warn('Could not update community members in Firestore:', e));
 
@@ -1178,7 +1287,7 @@ export function useAppState() {
       if (c.id === communityId) {
         const updatedMembers = c.memberIds.includes(memberId) ? c.memberIds : [...c.memberIds, memberId];
         const updatedPending = (c.pendingMemberRequests || []).filter(uid => uid !== memberId);
-        
+
         updateDoc(doc(db, 'communities', communityId), {
           memberIds: updatedMembers,
           pendingMemberRequests: updatedPending,
@@ -1191,7 +1300,7 @@ export function useAppState() {
           const updatedJoined = approvedUser.joinedCommunities.includes(communityId)
             ? approvedUser.joinedCommunities
             : [...approvedUser.joinedCommunities, communityId];
-          
+
           updateDoc(doc(db, 'users', memberId), {
             joinedCommunities: updatedJoined
           }).catch(err => console.warn('Firestore error updating approved user communities:', err));
@@ -1240,7 +1349,7 @@ export function useAppState() {
     setCommunities(prev => prev.map(c => {
       if (c.id === communityId) {
         const updatedPending = (c.pendingMemberRequests || []).filter(uid => uid !== memberId);
-        
+
         updateDoc(doc(db, 'communities', communityId), {
           pendingMemberRequests: updatedPending,
           updatedAt: new Date().toISOString()
@@ -1435,7 +1544,7 @@ export function useAppState() {
           vCount += 1;
           trustDiff = 5;
           pScoreDiff = 2;
-          
+
           if (i.status === 'OPEN' || i.status === 'AI_ANALYZED') {
             if (isUserAuthoritative || vCount >= 3) {
               newStatus = 'COMMUNITY_VERIFIED';
@@ -1451,7 +1560,7 @@ export function useAppState() {
           }
         } else if (voteType === 'RESOLVED') {
           trustDiff = 10;
-          
+
           const pastResolvedVotes = verifications.filter(v => v.issueId === issueId && v.voteType === 'RESOLVED').length;
           const totalResolvedVotes = pastResolvedVotes + 1;
           if (isUserAuthoritative || totalResolvedVotes >= 3) {
@@ -1471,7 +1580,11 @@ export function useAppState() {
         };
 
         setDoc(doc(db, 'issues', i.id), cleanUndefined(updatedIssue))
-          .then(() => {
+          .then(async () => {
+            // If status changed, notify the reporter
+            if (newStatus !== i.status && i.reportedBy && i.reportedBy !== currentUser?.id) {
+              await createStatusChangeNotification(i.id, newStatus, i.reportedBy, i.title);
+            }
             if (newStatus !== i.status) {
               const feedPostId = `post_${i.id}`;
               const feedPostRef = doc(db, 'feed_posts', feedPostId);
@@ -1638,7 +1751,7 @@ export function useAppState() {
         const actId = `act_${Date.now()}`;
         const targetId = issueId || postId.replace('post_', '');
         const targetTitle = (feedPosts || []).find(p => p.id === postId)?.title || issues.find(i => i.id === targetId)?.title || 'Civic Issue';
-        
+
         const newAct: UserActivity = {
           id: actId,
           userId: currentUser.id,
@@ -1773,7 +1886,11 @@ export function useAppState() {
         };
 
         setDoc(doc(db, 'issues', i.id), cleanUndefined(updatedIssue))
-          .then(() => {
+          .then(async () => {
+            // Notify the original reporter about status change
+            if (i.reportedBy && i.reportedBy !== currentUser?.id) {
+              await createStatusChangeNotification(i.id, status, i.reportedBy, i.title);
+            }
             const feedPostId = `post_${i.id}`;
             const feedPostRef = doc(db, 'feed_posts', feedPostId);
             getDoc(feedPostRef).then(snap => {
@@ -1801,7 +1918,7 @@ export function useAppState() {
             const updatedResolved = c.resolvedIssues + 1;
             const updatedScore = Math.min(100, c.reputationScore + 4);
 
-            communitiesService.updateCommunityDetails(c.id, { 
+            communitiesService.updateCommunityDetails(c.id, {
               resolvedIssues: updatedResolved,
               reputationScore: updatedScore
             })
@@ -1863,7 +1980,7 @@ export function useAppState() {
   const handleResetDatabase = useCallback(async () => {
     try {
       console.log('Resetting and seeding sandbox database...');
-      
+
       // Collections to clear
       const collectionsToClear = [
         'users',
@@ -1874,9 +1991,10 @@ export function useAppState() {
         'activities',
         'notifications',
         'feed_posts',
-        'post_reactions'
+        'post_reactions',
+        'challenges'
       ];
-      
+
       for (const colName of collectionsToClear) {
         const snap = await getDocs(collection(db, colName));
         const batch = writeBatch(db);
@@ -1904,7 +2022,7 @@ export function useAppState() {
         'resolver_communityhero_net': 'user_3',
         'authority_communityhero_net': 'user_4'
       };
-      
+
       Object.entries(mappings).forEach(([cleanEmail, uid]) => {
         const mockId = emailToMockId[cleanEmail];
         if (mockId) {
@@ -1917,7 +2035,7 @@ export function useAppState() {
 
       // Re-seed all mock data with dynamic mapping substitutions
       const batch = writeBatch(db);
-      
+
       mockUsers.forEach((u) => {
         const newId = mapId(u.id);
         const mappedUser = { ...u, id: newId };
@@ -1971,7 +2089,11 @@ export function useAppState() {
         };
         batch.set(doc(db, 'feed_posts', f.id), cleanUndefined(mappedFeedPost));
       });
-      
+
+      mockChallenges.forEach((c) => {
+        batch.set(doc(db, 'challenges', c.id), cleanUndefined(c));
+      });
+
       // Add notifications for active user if present
       if (currentUser) {
         const welcomeNotifs: Notification[] = [
@@ -2010,7 +2132,7 @@ export function useAppState() {
           batch.set(doc(db, 'notifications', n.id), n);
         });
       }
-      
+
       await batch.commit();
       window.location.reload();
     } catch (e) {
@@ -2029,6 +2151,7 @@ export function useAppState() {
     verifications,
     comments,
     activities,
+    challenges,
     currentUser,
     currentRole,
     selectedCommunityId,
@@ -2056,6 +2179,7 @@ export function useAppState() {
     handleUpdateIssue,
     handleDeleteIssue,
     handleCreateCommunity,
+    handleCreateChallenge,
     handleUpdateCommunityDetails,
     handleJoinCommunity,
     handleLeaveCommunity,

@@ -1,4 +1,4 @@
-import { User, Community, Issue, IssueVerification, IssueUpdate, Comment, UserActivity, FeedPost } from '../types';
+import { User, Community, Issue, IssueVerification, IssueUpdate, Comment, UserActivity, FeedPost, CivicChallenge } from '../types';
 
 export const mockUsers: User[] = [
   {
@@ -934,5 +934,36 @@ export const mockActivities: UserActivity[] = [
     targetTitle: 'Illegal Garbage Dumping near Market Road Corner',
     createdAt: '2026-06-22T14:20:00Z',
     pointsEarned: 15
+  }
+];
+
+export const mockChallenges: CivicChallenge[] = [
+  {
+    id: 'ch_1',
+    title: 'Cleanliness Drive Audit',
+    description: 'Verify at least 3 garbage-piling reports in your area to earn the Cleanliness Champion badge.',
+    type: 'WEEKLY',
+    xpReward: 150,
+    badgeReward: 'clean_champ',
+    targetCount: 3,
+    category: 'Garbage'
+  },
+  {
+    id: 'ch_2',
+    title: 'Hyperlocal Supporter',
+    description: 'Support at least 1 reported neighbor issue today to build civic cohesion.',
+    type: 'DAILY',
+    xpReward: 50,
+    targetCount: 1
+  },
+  {
+    id: 'ch_3',
+    title: 'Monsoon Drain Audit',
+    description: 'Log at least 3 drainage blockage complaints prior to monsoons. This guarantees priority allocation from Municipal Engineering division.',
+    type: 'COMMUNITY',
+    xpReward: 200,
+    targetCount: 3,
+    communityId: 'comm_2',
+    category: 'Drainage'
   }
 ];

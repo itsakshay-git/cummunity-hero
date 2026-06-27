@@ -21,7 +21,7 @@ export const Badge: React.FC<BadgeProps> = ({
   className = ''
 }) => {
   const baseStyle = 'inline-flex items-center gap-1.5 text-[8px] font-bold font-mono tracking-wider uppercase px-2 py-0.5 rounded-md border';
-  
+
   let computedStyle = '';
   let dotColor = '';
 

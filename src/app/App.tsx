@@ -5,8 +5,8 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Shield, Building2, AlertTriangle, PlusCircle, 
+import {
+  Shield, Building2, AlertTriangle, PlusCircle,
   Award, Map, LogOut, User as UserIcon, Users, Compass, Flame, Zap,
   Search, Sparkles, Settings, Bell, Sun, Moon, MapPin, X, RefreshCw
 } from 'lucide-react';
@@ -44,6 +44,7 @@ export default function App() {
     verifications,
     comments,
     activities,
+    challenges,
     currentUser,
     currentRole,
     selectedCommunityId,
@@ -71,6 +72,7 @@ export default function App() {
     handleUpdateIssue,
     handleDeleteIssue,
     handleCreateCommunity,
+    handleCreateChallenge,
     handleUpdateCommunityDetails,
     handleJoinCommunity,
     handleLeaveCommunity,
@@ -105,6 +107,49 @@ export default function App() {
 
   const [feedSearchQuery, setFeedSearchQuery] = React.useState('');
   const [notifDrawerOpen, setNotifDrawerOpen] = React.useState(false);
+  const [claimMessage, setClaimMessage] = React.useState<string | null>(null);
+
+  // Civic quest creation states
+  const [isCreateCivicQuestOpen, setIsCreateCivicQuestOpen] = React.useState(false);
+  const [newCivicTitle, setNewCivicTitle] = React.useState('');
+  const [newCivicDescription, setNewCivicDescription] = React.useState('');
+  const [newCivicType, setNewCivicType] = React.useState<'DAILY' | 'WEEKLY'>('DAILY');
+  const [newCivicCategory, setNewCivicCategory] = React.useState('Garbage');
+  const [newCivicTarget, setNewCivicTarget] = React.useState(1);
+  const [newCivicXP, setNewCivicXP] = React.useState(50);
+
+  const handleClaimChallengeReward = async (challenge: any) => {
+    if (!currentUser) return;
+    const isAlreadyCompleted = currentUser.completedChallenges?.includes(challenge.id);
+    if (isAlreadyCompleted) return;
+
+    // Calculate new XP
+    const newXP = (currentUser.reputationScore || 0) + challenge.xpReward;
+
+    // Calculate new badges list
+    let updatedBadges = [...(currentUser.badges || [])];
+    if (challenge.badgeReward && !updatedBadges.includes(challenge.badgeReward)) {
+      updatedBadges.push(challenge.badgeReward);
+    }
+
+    // Calculate new completed challenges list
+    const updatedCompletedChallenges = [...(currentUser.completedChallenges || []), challenge.id];
+
+    // Update user profile
+    await updateUserProfile({
+      reputationScore: newXP,
+      xp: newXP,
+      badges: updatedBadges,
+      completedChallenges: updatedCompletedChallenges
+    });
+
+    const badgeText = challenge.badgeReward ? ` and the "${challenge.badgeReward === 'clean_champ' ? 'Cleanliness Champion' : challenge.badgeReward}" badge` : '';
+    setClaimMessage(`Successfully claimed reward! You earned +${challenge.xpReward} XP${badgeText}!`);
+
+    setTimeout(() => {
+      setClaimMessage(null);
+    }, 5000);
+  };
 
   // Compute unread notifications count
   const unreadCount = React.useMemo(() => {
@@ -190,11 +235,11 @@ export default function App() {
     return (
       <>
         <LandingPage onStart={handleStartApp} />
-        <AuthModal 
-          isOpen={authModalOpen} 
-          onClose={() => setAuthModalOpen(false)} 
-          defaultRole={authModalRole} 
-          onAuthSuccess={() => setAppStarted(true)} 
+        <AuthModal
+          isOpen={authModalOpen}
+          onClose={() => setAuthModalOpen(false)}
+          defaultRole={authModalRole}
+          onAuthSuccess={() => setAppStarted(true)}
           userCoords={userCoords}
         />
       </>
@@ -215,20 +260,20 @@ export default function App() {
           <span className="font-bold tracking-tight text-slate-900 dark:text-slate-100 text-sm">Community Hero</span>
         </div>
         <div className="flex items-center space-x-2.5">
-          <button 
+          <button
             onClick={() => handleNavigation('settings')}
             className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 rounded-lg bg-slate-50 dark:bg-slate-800 cursor-pointer flex items-center justify-center border border-slate-200/40 dark:border-slate-700/50"
             title="Settings"
           >
             <Settings className="w-4 h-4" />
           </button>
-          <button 
+          <button
             onClick={() => handleNavigation('profile')}
             className="w-8 h-8 rounded-full overflow-hidden border border-slate-200 dark:border-slate-700 cursor-pointer"
           >
             <img src={currentUser.photoUrl} alt="Avatar" className="w-full h-full object-cover" />
           </button>
-          <button 
+          <button
             onClick={handleSignOut}
             className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 rounded-lg bg-slate-50 dark:bg-slate-800 cursor-pointer border border-slate-200/40 dark:border-slate-700/50"
           >
@@ -238,8 +283,8 @@ export default function App() {
       </header>
 
       {/* Main Core Shell */}
-      <div className="flex-grow flex w-full max-w-[1300px] mx-auto pb-16 md:pb-0 px-4 md:px-6">
-        
+      <div className="flex-grow flex w-full max-w-[1300px] mx-auto pb-16 md:pb-0 px-0 md:px-6">
+
         {/* Left Sidebar */}
         <aside className="hidden md:flex w-64 bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-slate-800 flex-col justify-between flex-shrink-0 sticky top-0 h-screen px-6 py-6 transition-colors duration-300">
           <div className="font-sans">
@@ -253,134 +298,124 @@ export default function App() {
 
             {/* Sidebar navigation */}
             <nav className="space-y-1">
-              <button 
+              <button
                 id="sidebar-nav-feed"
                 onClick={() => handleNavigation('feed')}
-                className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-[13px] font-bold transition-all cursor-pointer ${
-                  activeTab === 'feed' 
-                    ? 'bg-slate-100/80 dark:bg-slate-800 text-slate-900 dark:text-white' 
-                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
+                className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-[13px] font-bold transition-all cursor-pointer ${activeTab === 'feed'
+                  ? 'bg-slate-100/80 dark:bg-slate-800 text-slate-900 dark:text-white'
+                  : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
               >
                 <Compass className="w-4 h-4 flex-shrink-0" />
                 <span>Hyperlocal Feed</span>
               </button>
 
-              <button 
+              <button
                 id="sidebar-nav-dashboard"
                 onClick={() => handleNavigation('dashboard')}
-                className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-[13px] font-bold transition-all cursor-pointer ${
-                  activeTab === 'dashboard' 
-                    ? 'bg-slate-100/80 dark:bg-slate-800 text-slate-900 dark:text-white' 
-                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
+                className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-[13px] font-bold transition-all cursor-pointer ${activeTab === 'dashboard'
+                  ? 'bg-slate-100/80 dark:bg-slate-800 text-slate-900 dark:text-white'
+                  : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
               >
                 <Users className="w-4 h-4 flex-shrink-0" />
                 <span>Action Hub</span>
               </button>
 
-              <button 
+              <button
                 id="sidebar-nav-communities"
                 onClick={() => {
                   setSelectedCommunityId('all');
                   handleNavigation('communities');
                 }}
-                className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-[13px] font-bold transition-all cursor-pointer ${
-                  activeTab === 'communities' 
-                    ? 'bg-slate-100/80 dark:bg-slate-800 text-slate-900 dark:text-white' 
-                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
+                className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-[13px] font-bold transition-all cursor-pointer ${activeTab === 'communities'
+                  ? 'bg-slate-100/80 dark:bg-slate-800 text-slate-900 dark:text-white'
+                  : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
               >
                 <Building2 className="w-4 h-4 flex-shrink-0" />
                 <span>Community Spaces</span>
               </button>
 
-              <button 
+              <button
                 id="sidebar-nav-map"
                 onClick={() => handleNavigation('map-explorer')}
-                className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-[13px] font-bold transition-all cursor-pointer ${
-                  activeTab === 'map-explorer' 
-                    ? 'bg-slate-100/80 dark:bg-slate-800 text-slate-900 dark:text-white' 
-                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
+                className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-[13px] font-bold transition-all cursor-pointer ${activeTab === 'map-explorer'
+                  ? 'bg-slate-100/80 dark:bg-slate-800 text-slate-900 dark:text-white'
+                  : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
               >
                 <Map className="w-4 h-4 flex-shrink-0" />
                 <span>Map Explorer</span>
               </button>
 
-              <button 
+              <button
                 id="sidebar-nav-issues"
                 onClick={() => handleNavigation('issues')}
-                className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-[13px] font-bold transition-all cursor-pointer ${
-                  activeTab === 'issues' || activeTab === 'issue-details' 
-                    ? 'bg-slate-100/80 dark:bg-slate-800 text-slate-900 dark:text-white' 
-                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
+                className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-[13px] font-bold transition-all cursor-pointer ${activeTab === 'issues' || activeTab === 'issue-details'
+                  ? 'bg-slate-100/80 dark:bg-slate-800 text-slate-900 dark:text-white'
+                  : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
               >
                 <AlertTriangle className="w-4 h-4 flex-shrink-0" />
                 <span>Incidents Directory</span>
               </button>
 
-              <button 
+              <button
                 id="sidebar-nav-report"
                 onClick={() => handleNavigation('report')}
-                className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-[13px] font-bold transition-all cursor-pointer ${
-                  activeTab === 'report' 
-                    ? 'bg-slate-100/80 dark:bg-slate-800 text-slate-900 dark:text-white' 
-                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
+                className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-[13px] font-bold transition-all cursor-pointer ${activeTab === 'report'
+                  ? 'bg-slate-100/80 dark:bg-slate-800 text-slate-900 dark:text-white'
+                  : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
               >
                 <PlusCircle className="w-4 h-4 flex-shrink-0" />
                 <span>Report an Issue</span>
               </button>
 
-              <button 
+              <button
                 id="sidebar-nav-challenges"
                 onClick={() => handleNavigation('challenges')}
-                className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-[13px] font-bold transition-all cursor-pointer ${
-                  activeTab === 'challenges' 
-                    ? 'bg-slate-100/80 dark:bg-slate-800 text-slate-900 dark:text-white' 
-                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
+                className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-[13px] font-bold transition-all cursor-pointer ${activeTab === 'challenges'
+                  ? 'bg-slate-100/80 dark:bg-slate-800 text-slate-900 dark:text-white'
+                  : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
               >
                 <Flame className="w-4 h-4 flex-shrink-0 text-orange-500 animate-pulse" />
                 <span>Civic Challenges</span>
               </button>
 
-              <button 
+              <button
                 id="sidebar-nav-leaderboard"
                 onClick={() => handleNavigation('leaderboard')}
-                className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-[13px] font-bold transition-all cursor-pointer ${
-                  activeTab === 'leaderboard' 
-                    ? 'bg-slate-100/80 dark:bg-slate-800 text-slate-900 dark:text-white' 
-                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
+                className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-[13px] font-bold transition-all cursor-pointer ${activeTab === 'leaderboard'
+                  ? 'bg-slate-100/80 dark:bg-slate-800 text-slate-900 dark:text-white'
+                  : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
               >
                 <Award className="w-4 h-4 flex-shrink-0 text-amber-500" />
                 <span>Civic Champions</span>
               </button>
 
-              <button 
+              <button
                 id="sidebar-nav-profile"
                 onClick={() => handleNavigation('profile')}
-                className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-[13px] font-bold transition-all cursor-pointer ${
-                  activeTab === 'profile' 
-                    ? 'bg-slate-100/80 dark:bg-slate-800 text-slate-900 dark:text-white' 
-                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
+                className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-[13px] font-bold transition-all cursor-pointer ${activeTab === 'profile'
+                  ? 'bg-slate-100/80 dark:bg-slate-800 text-slate-900 dark:text-white'
+                  : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
               >
                 <UserIcon className="w-4 h-4 flex-shrink-0" />
                 <span>My Profile</span>
               </button>
 
-              <button 
+              <button
                 id="sidebar-nav-settings"
                 onClick={() => handleNavigation('settings')}
-                className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-[13px] font-bold transition-all cursor-pointer ${
-                  activeTab === 'settings' 
-                    ? 'bg-slate-100/80 dark:bg-slate-800 text-slate-900 dark:text-white' 
-                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
+                className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-[13px] font-bold transition-all cursor-pointer ${activeTab === 'settings'
+                  ? 'bg-slate-100/80 dark:bg-slate-800 text-slate-900 dark:text-white'
+                  : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
               >
                 <Settings className="w-4 h-4 flex-shrink-0" />
                 <span>Settings</span>
@@ -390,13 +425,13 @@ export default function App() {
 
           {/* User profile capsule */}
           <div className="border-t border-slate-100 dark:border-slate-800 pt-4 font-sans">
-            <div 
+            <div
               className="flex items-center space-x-3 mb-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40 p-2 rounded-xl transition-all"
               onClick={() => handleNavigation('profile')}
             >
-              <img 
-                src={currentUser.photoUrl} 
-                alt="Avatar" 
+              <img
+                src={currentUser.photoUrl}
+                alt="Avatar"
                 className="w-9 h-9 rounded-full border border-slate-200 dark:border-slate-800 object-cover"
               />
               <div className="min-w-0 flex-grow">
@@ -405,7 +440,7 @@ export default function App() {
               </div>
             </div>
 
-            <button 
+            <button
               id="sidebar-sign-out"
               onClick={handleSignOut}
               className="w-full py-2 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-650 dark:text-slate-350 text-[10px] font-bold rounded-xl transition-all flex items-center justify-center space-x-1.5 cursor-pointer border border-slate-200/60 dark:border-slate-800/85"
@@ -421,10 +456,10 @@ export default function App() {
           <div className="flex-grow flex flex-col min-w-0">
             {/* Top unified bar */}
             <div className="bg-white/85 dark:bg-slate-900/85 backdrop-blur-md border-b border-slate-200/50 dark:border-slate-800/80 px-6 py-3 flex items-center justify-between sticky top-0 z-30 transition-colors">
-              <h2 className="text-xs font-black text-slate-900 dark:text-slate-100 tracking-tight uppercase">
+              <h2 className="text-xs font-black text-slate-900 dark:text-slate-100 tracking-tight uppercase hidden sm:block">
                 {activeTab === 'feed' ? 'Hyperlocal Feed' : activeTab === 'map-explorer' ? 'Map Explorer' : activeTab === 'leaderboard' ? 'Civic Champions' : activeTab === 'communities' ? 'Community Spaces' : activeTab === 'issues' ? 'Incidents Directory' : activeTab === 'dashboard' ? 'Action Hub' : activeTab}
               </h2>
-              
+
               <div className="flex items-center space-x-3">
                 {/* Location Selector */}
                 <div className="flex items-center gap-1.5 bg-slate-100/50 dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200/40 dark:border-slate-700/50">
@@ -455,7 +490,7 @@ export default function App() {
                     </span>
                   )}
                 </button>
-                
+
                 {/* Dark/Light mode toggle */}
                 <button
                   onClick={toggleTheme}
@@ -468,9 +503,8 @@ export default function App() {
             </div>
 
             {/* Dynamic Canvas Area */}
-            <main className={`flex-grow p-4 md:p-6 overflow-y-auto min-w-0 ${
-              activeTab === 'feed' ? 'max-w-2xl mx-auto w-full' : 'max-w-full'
-            }`}>
+            <main className={`flex-grow p-4 md:p-6 overflow-y-auto min-w-0 ${activeTab === 'feed' ? 'max-w-2xl mx-auto w-full' : 'max-w-full'
+              }`}>
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activeTab}
@@ -513,7 +547,7 @@ export default function App() {
                     )}
 
                     {activeTab === 'dashboard' && (
-                      <Dashboard 
+                      <Dashboard
                         issues={issues}
                         communities={communities}
                         onSelectIssue={handleSelectIssue}
@@ -530,6 +564,8 @@ export default function App() {
                         <CommunityPage
                           community={communities.find(c => c.id === selectedCommunityId)!}
                           issues={issues}
+                          challenges={challenges}
+                          onCreateChallenge={handleCreateChallenge}
                           users={users}
                           joinedIds={currentUser.joinedCommunities}
                           verifications={verifications}
@@ -547,7 +583,7 @@ export default function App() {
                           userCoords={userCoords}
                         />
                       ) : (
-                        <CommunitiesList 
+                        <CommunitiesList
                           communities={communities}
                           joinedIds={currentUser.joinedCommunities}
                           onJoin={handleJoinCommunity}
@@ -562,7 +598,7 @@ export default function App() {
                     )}
 
                     {activeTab === 'report' && (
-                      <ReportIssueForm 
+                      <ReportIssueForm
                         communities={communities}
                         issues={issues}
                         onSubmit={handleCreateIssue}
@@ -573,7 +609,7 @@ export default function App() {
                     )}
 
                     {activeTab === 'map-explorer' && (
-                      <MapExplorer 
+                      <MapExplorer
                         issues={filteredIssues}
                         communities={communities}
                         onSelectIssue={handleSelectIssue}
@@ -582,7 +618,7 @@ export default function App() {
                     )}
 
                     {activeTab === 'issues' && (
-                      <IssuesList 
+                      <IssuesList
                         issues={filteredIssues}
                         communities={communities}
                         onSelectIssue={handleSelectIssue}
@@ -594,7 +630,7 @@ export default function App() {
                     )}
 
                     {activeTab === 'issue-details' && activeIssue && (
-                      <IssueDetails 
+                      <IssueDetails
                         issue={activeIssue}
                         verifications={verifications}
                         onBack={() => handleNavigation('feed')}
@@ -612,8 +648,8 @@ export default function App() {
                     )}
 
                     {activeTab === 'leaderboard' && (
-                      <Leaderboard 
-                        users={users} 
+                      <Leaderboard
+                        users={users}
                         communities={communities}
                         currentUser={currentUser}
                         onViewUserProfile={handleViewUserProfile}
@@ -621,7 +657,7 @@ export default function App() {
                     )}
 
                     {activeTab === 'profile' && (
-                      <ProfilePage 
+                      <ProfilePage
                         user={viewingUserId ? (users.find(u => u.id === viewingUserId) || currentUser) : currentUser}
                         isOwnProfile={!viewingUserId || viewingUserId === currentUser?.id}
                         issues={issues}
@@ -641,7 +677,7 @@ export default function App() {
                     )}
 
                     {activeTab === 'settings' && (
-                      <SettingsPage 
+                      <SettingsPage
                         user={currentUser}
                         theme={theme}
                         toggleTheme={toggleTheme}
@@ -657,54 +693,216 @@ export default function App() {
 
                     {activeTab === 'challenges' && (
                       <div className="space-y-6 animate-fade-in pb-16 font-sans">
-                        <div>
-                          <h1 className="text-lg font-extrabold text-slate-900 tracking-tight">Civic Challenges Hub</h1>
-                          <p className="text-[11px] text-slate-500 mt-1">Complete neighborhood quests to earn XP badges and climb the civic honor roll.</p>
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <h1 className="text-lg font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">Civic Challenges Hub</h1>
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Complete neighborhood quests to earn XP badges and climb the civic honor roll.</p>
+                          </div>
+                          {(currentUser?.role === 'Authority' || currentUser?.role === 'Community Admin') && (
+                            <button
+                              onClick={() => setIsCreateCivicQuestOpen(true)}
+                              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold border-0 cursor-pointer shadow-sm transition-all hover:scale-105"
+                            >
+                              + Create Civic Quest
+                            </button>
+                          )}
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div className="bg-white p-5 rounded-xl border border-slate-200/60 shadow-[0_1px_3px_rgba(0,0,0,0.01)] space-y-4">
-                            <div className="flex items-start gap-4">
-                              <div className="p-2.5 bg-orange-50 text-orange-600 rounded-xl">
-                                <Flame className="w-5 h-5 animate-pulse" />
-                              </div>
-                              <div className="space-y-1">
-                                <div className="block pb-1">
-                                  <Badge variant="color" colorClass="bg-amber-50/50 text-amber-600 border-amber-200/50">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                                    Weekly Quest
-                                  </Badge>
-                                </div>
-                                <h3 className="font-bold text-slate-900 text-xs">Cleanliness Drive Audit</h3>
-                                <p className="text-[11px] text-slate-500 leading-normal">Verify at least 3 garbage-piling reports in your area to earn the Cleanliness Champion badge.</p>
-                              </div>
-                            </div>
-                            <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400 font-medium">
-                              <span>Reward: 150 Reputation XP</span>
-                              <span className="text-orange-600 font-bold">Ends in 3 days</span>
-                            </div>
-                          </div>
 
-                          <div className="bg-white p-5 rounded-xl border border-slate-200/60 shadow-[0_1px_3px_rgba(0,0,0,0.01)] space-y-4">
-                            <div className="flex items-start gap-4">
-                              <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
-                                <Zap className="w-5 h-5 animate-pulse" />
+                        {isCreateCivicQuestOpen && (
+                          <div className="p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50/50 dark:bg-slate-950/20 space-y-4 animate-fade-in text-slate-900 dark:text-slate-100">
+                            <h4 className="text-xs font-extrabold">Create New City-wide Quest</h4>
+                            <div className="space-y-3">
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-slate-500 block">Quest Title</label>
+                                <input
+                                  type="text"
+                                  placeholder="e.g. Traffic Sign Audit"
+                                  value={newCivicTitle}
+                                  onChange={(e) => setNewCivicTitle(e.target.value)}
+                                  className="w-full p-2 border border-slate-250 dark:border-slate-800 rounded-lg text-xs bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
+                                />
                               </div>
                               <div className="space-y-1">
-                                <div className="block pb-1">
-                                  <Badge variant="color" colorClass="bg-blue-50/50 text-blue-600 border-blue-200/50">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                                    Daily Quest
-                                  </Badge>
+                                <label className="text-[10px] font-bold text-slate-500 block">Description / Action Required</label>
+                                <textarea
+                                  placeholder="What do citizens need to do..."
+                                  value={newCivicDescription}
+                                  onChange={(e) => setNewCivicDescription(e.target.value)}
+                                  className="w-full p-2 border border-slate-250 dark:border-slate-800 rounded-lg text-xs bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 min-h-[60px]"
+                                />
+                              </div>
+                              <div className="grid grid-cols-4 gap-3">
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-slate-500 block">Quest Type</label>
+                                  <select
+                                    value={newCivicType}
+                                    onChange={(e) => setNewCivicType(e.target.value as any)}
+                                    className="w-full p-2 border border-slate-250 dark:border-slate-800 rounded-lg text-xs bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
+                                  >
+                                    <option value="DAILY">Daily Quest</option>
+                                    <option value="WEEKLY">Weekly Quest</option>
+                                  </select>
                                 </div>
-                                <h3 className="font-bold text-slate-900 text-xs">Hyperlocal Supporter</h3>
-                                <p className="text-[11px] text-slate-500 leading-normal">Support at least 1 reported neighbor issue today to build civic cohesion.</p>
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-slate-500 block">Target Category</label>
+                                  <select
+                                    value={newCivicCategory}
+                                    onChange={(e) => setNewCivicCategory(e.target.value)}
+                                    className="w-full p-2 border border-slate-250 dark:border-slate-800 rounded-lg text-xs bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
+                                  >
+                                    <option value="Garbage">Garbage</option>
+                                    <option value="Water Leakage">Water Leakage</option>
+                                    <option value="Pothole">Pothole</option>
+                                    <option value="Streetlight">Streetlight</option>
+                                    <option value="Drainage">Drainage</option>
+                                    <option value="General">General/Any</option>
+                                  </select>
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-slate-500 block">Required Count</label>
+                                  <input
+                                    type="number"
+                                    min={1}
+                                    value={newCivicTarget}
+                                    onChange={(e) => setNewCivicTarget(Number(e.target.value))}
+                                    className="w-full p-2 border border-slate-250 dark:border-slate-800 rounded-lg text-xs bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-slate-500 block">XP Reward</label>
+                                  <input
+                                    type="number"
+                                    min={50}
+                                    step={50}
+                                    value={newCivicXP}
+                                    onChange={(e) => setNewCivicXP(Number(e.target.value))}
+                                    className="w-full p-2 border border-slate-250 dark:border-slate-800 rounded-lg text-xs bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
+                                  />
+                                </div>
                               </div>
                             </div>
-                            <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400 font-medium">
-                              <span>Reward: 50 Reputation XP</span>
-                              <span className="text-blue-600 font-bold">Resets in 11 hours</span>
+                            <div className="flex gap-2 justify-end pt-2">
+                              <button
+                                onClick={() => setIsCreateCivicQuestOpen(false)}
+                                className="px-3 py-1.5 rounded-lg border border-slate-250 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-550 hover:text-slate-700 text-xs font-bold cursor-pointer"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  if (!newCivicTitle.trim() || !newCivicDescription.trim()) {
+                                    alert('Please enter a title and description.');
+                                    return;
+                                  }
+                                  await handleCreateChallenge({
+                                    title: newCivicTitle,
+                                    description: newCivicDescription,
+                                    type: newCivicType,
+                                    xpReward: newCivicXP,
+                                    targetCount: newCivicTarget,
+                                    category: newCivicCategory === 'General' ? undefined : newCivicCategory
+                                  });
+                                  setIsCreateCivicQuestOpen(false);
+                                  setNewCivicTitle('');
+                                  setNewCivicDescription('');
+                                }}
+                                className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold border-0 cursor-pointer"
+                              >
+                                Publish Quest
+                              </button>
                             </div>
                           </div>
+                        )}
+
+                        {claimMessage && (
+                          <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 p-4 rounded-xl text-xs font-bold text-emerald-800 dark:text-emerald-450 animate-bounce flex items-center justify-between">
+                            <span>🎉 {claimMessage}</span>
+                            <button onClick={() => setClaimMessage(null)} className="text-emerald-800 dark:text-emerald-450 hover:opacity-75 font-bold bg-transparent border-0 cursor-pointer">X</button>
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {challenges.filter(c => c.type !== 'COMMUNITY').map(challenge => {
+                            // Calculate current progress
+                            let progressCount = 0;
+                            if (challenge.type === 'WEEKLY' && challenge.category === 'Garbage') {
+                              progressCount = activities.filter(act => {
+                                if (act.userId !== currentUser?.id) return false;
+                                if (act.type !== 'verify' && act.type !== 'ISSUE_VERIFIED') return false;
+                                const relatedIssue = issues.find(i => i.id === act.targetId);
+                                return relatedIssue?.category === 'Garbage';
+                              }).length;
+                            } else if (challenge.type === 'DAILY') {
+                              progressCount = activities.filter(act => {
+                                if (act.userId !== currentUser?.id) return false;
+                                if (act.type !== 'support' && act.type !== 'POST_SUPPORTED') return false;
+                                const diffHours = (new Date().getTime() - new Date(act.createdAt).getTime()) / (1000 * 60 * 60);
+                                return diffHours < 24;
+                              }).length;
+                            }
+
+                            const isCompleted = progressCount >= challenge.targetCount;
+                            const isClaimed = currentUser?.completedChallenges?.includes(challenge.id) || false;
+                            const progressPercentage = Math.min(100, Math.round((progressCount / challenge.targetCount) * 100));
+
+                            return (
+                              <div key={challenge.id} className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200/60 dark:border-slate-800/80 shadow-[0_1px_3px_rgba(0,0,0,0.01)] space-y-4 flex flex-col justify-between">
+                                <div className="space-y-4">
+                                  <div className="flex items-start gap-4">
+                                    <div className={`p-2.5 rounded-xl ${challenge.type === 'WEEKLY' ? 'bg-orange-50 dark:bg-orange-950/20 text-orange-600 dark:text-orange-400' : 'bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400'}`}>
+                                      {challenge.type === 'WEEKLY' ? (
+                                        <Flame className="w-5 h-5 animate-pulse" />
+                                      ) : (
+                                        <Zap className="w-5 h-5 animate-pulse" />
+                                      )}
+                                    </div>
+                                    <div className="space-y-1 flex-1">
+                                      <div className="block pb-1">
+                                        <Badge variant="color" colorClass={challenge.type === 'WEEKLY' ? 'bg-amber-50/50 dark:bg-amber-950/10 text-amber-600 dark:text-amber-400 border-amber-200/50' : 'bg-blue-50/50 dark:bg-blue-950/10 text-blue-600 dark:text-blue-400 border-blue-200/50'}>
+                                          <span className={`w-1.5 h-1.5 rounded-full ${challenge.type === 'WEEKLY' ? 'bg-amber-500' : 'bg-blue-500'}`} />
+                                          {challenge.type === 'WEEKLY' ? 'Weekly Quest' : 'Daily Quest'}
+                                        </Badge>
+                                      </div>
+                                      <h3 className="font-bold text-slate-900 dark:text-slate-100 text-xs">{challenge.title}</h3>
+                                      <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-normal">{challenge.description}</p>
+                                    </div>
+                                  </div>
+
+                                  {!isClaimed && (
+                                    <div className="space-y-1.5">
+                                      <div className="flex justify-between text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                                        <span>Progress: {progressCount} / {challenge.targetCount}</span>
+                                        <span>{progressPercentage}%</span>
+                                      </div>
+                                      <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                                        <div className={`h-full rounded-full ${challenge.type === 'WEEKLY' ? 'bg-amber-500' : 'bg-blue-500'}`} style={{ width: `${progressPercentage}%` }} />
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+                                  <span>Reward: {challenge.xpReward} XP {challenge.badgeReward && '+ Badge'}</span>
+                                  {isClaimed ? (
+                                    <span className="px-3 py-1.5 rounded-lg bg-green-50 dark:bg-green-950/20 text-green-600 dark:text-green-400 font-bold border border-green-200 dark:border-green-900/40">
+                                      Claimed ✔
+                                    </span>
+                                  ) : isCompleted ? (
+                                    <button
+                                      onClick={() => handleClaimChallengeReward(challenge)}
+                                      className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-extrabold shadow-sm cursor-pointer border-0 transition-all hover:scale-105"
+                                    >
+                                      Claim Reward!
+                                    </button>
+                                  ) : (
+                                    <span className="px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-850 text-slate-400 dark:text-slate-600 font-bold border border-slate-200 dark:border-slate-800/80">
+                                      In Progress...
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
@@ -820,28 +1018,28 @@ export default function App() {
 
       {/* Mobile Bottom Navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-6 py-2.5 flex items-center justify-between z-40 shadow-[0_-2px_10px_rgba(0,0,0,0.05)] dark:shadow-[0_-2px_10px_rgba(0,0,0,0.2)] font-sans transition-colors duration-300">
-        <button 
+        <button
           onClick={() => handleNavigation('feed')}
           className={`flex flex-col items-center space-y-1 cursor-pointer bg-transparent border-0 ${activeTab === 'feed' ? 'text-emerald-600' : 'text-slate-400'}`}
         >
           <Compass className="w-5 h-5" />
           <span className="text-[9px] font-bold">Home</span>
         </button>
-        <button 
+        <button
           onClick={() => handleNavigation('map-explorer')}
           className={`flex flex-col items-center space-y-1 cursor-pointer bg-transparent border-0 ${activeTab === 'map-explorer' ? 'text-emerald-600' : 'text-slate-400'}`}
         >
           <Map className="w-5 h-5" />
           <span className="text-[9px] font-bold">Map</span>
         </button>
-        <button 
+        <button
           onClick={() => handleNavigation('report')}
           className={`flex flex-col items-center space-y-1 cursor-pointer bg-transparent border-0 ${activeTab === 'report' ? 'text-emerald-600' : 'text-slate-400'}`}
         >
           <PlusCircle className="w-5 h-5" />
           <span className="text-[9px] font-bold">Report</span>
         </button>
-        <button 
+        <button
           onClick={() => {
             setSelectedCommunityId('all');
             handleNavigation('communities');
@@ -851,7 +1049,7 @@ export default function App() {
           <Building2 className="w-5 h-5" />
           <span className="text-[9px] font-bold">Spaces</span>
         </button>
-        <button 
+        <button
           onClick={() => handleNavigation('profile')}
           className={`flex flex-col items-center space-y-1 cursor-pointer bg-transparent border-0 ${activeTab === 'profile' ? 'text-emerald-600' : 'text-slate-400'}`}
         >
@@ -859,11 +1057,11 @@ export default function App() {
           <span className="text-[9px] font-bold">Profile</span>
         </button>
       </nav>
-      <AuthModal 
-        isOpen={authModalOpen} 
-        onClose={() => setAuthModalOpen(false)} 
-        defaultRole={authModalRole} 
-        onAuthSuccess={() => setAppStarted(true)} 
+      <AuthModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        defaultRole={authModalRole}
+        onAuthSuccess={() => setAppStarted(true)}
         userCoords={userCoords}
       />
 
@@ -934,11 +1132,10 @@ export default function App() {
                           handleNavigation('communities');
                         }
                       }}
-                      className={`p-3.5 rounded-xl border transition-all cursor-pointer flex gap-3 text-left ${
-                        notif.isRead
-                          ? 'bg-slate-50/50 dark:bg-slate-800/30 border-slate-150/40 dark:border-slate-800/40'
-                          : 'bg-emerald-50/30 dark:bg-emerald-950/10 border-emerald-100 dark:border-emerald-900/30 shadow-[0_1px_2px_rgba(16,185,129,0.05)]'
-                      }`}
+                      className={`p-3.5 rounded-xl border transition-all cursor-pointer flex gap-3 text-left ${notif.isRead
+                        ? 'bg-slate-50/50 dark:bg-slate-800/30 border-slate-150/40 dark:border-slate-800/40'
+                        : 'bg-emerald-50/30 dark:bg-emerald-950/10 border-emerald-100 dark:border-emerald-900/30 shadow-[0_1px_2px_rgba(16,185,129,0.05)]'
+                        }`}
                     >
                       <div className="flex-grow space-y-1">
                         <div className="flex items-center justify-between">
@@ -972,11 +1169,10 @@ export default function App() {
             initial={{ opacity: 0, y: 50, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 50, scale: 0.95 }}
-            className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-2.5 px-4 py-2.5 rounded-full border text-[11px] font-bold shadow-lg transition-all ${
-              !isOnline 
-                ? 'bg-amber-600 border-amber-500 text-white' 
-                : 'bg-slate-900 dark:bg-slate-800 border-slate-800 dark:border-slate-700 text-white'
-            }`}
+            className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-2.5 px-4 py-2.5 rounded-full border text-[11px] font-bold shadow-lg transition-all ${!isOnline
+              ? 'bg-amber-600 border-amber-500 text-white'
+              : 'bg-slate-900 dark:bg-slate-800 border-slate-800 dark:border-slate-700 text-white'
+              }`}
           >
             {!isOnline ? (
               <>
@@ -992,6 +1188,5 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
-  );
-}
+    </div>)
+};

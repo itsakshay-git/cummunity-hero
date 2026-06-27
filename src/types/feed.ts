@@ -6,6 +6,8 @@ export interface FeedPost {
   issueId?: string;
   communityId: string;
   userId: string;
+  // Optional author identifier (used by some components)
+  authorId?: string;
   title: string;
   body: string;
   imageUrl?: string;
