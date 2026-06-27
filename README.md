@@ -32,6 +32,12 @@ To incentivize citizen participation, Community Hero implements a lightweight ga
 
 ---
 
+## System Design
+
+![Community Hero](public/system_design.png)
+
+---
+
 ## 📂 Project Directory Structure
 
 ```text
