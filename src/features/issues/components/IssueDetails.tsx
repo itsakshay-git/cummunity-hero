@@ -228,7 +228,7 @@ export default function IssueDetails({
         <button 
           id="btn-back-to-directory"
           onClick={onBack}
-          className="flex items-center space-x-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-emerald-650 dark:hover:text-emerald-450 transition-colors cursor-pointer border-0 bg-transparent"
+          className="flex items-center space-x-2 text-[10px] sm:text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-emerald-650 dark:hover:text-emerald-450 transition-colors cursor-pointer border-0 bg-transparent"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Return to Directory</span>
@@ -238,7 +238,7 @@ export default function IssueDetails({
           <div className="flex items-center space-x-2">
             <button
               onClick={startEditing}
-              className="px-3.5 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-350 text-xs font-bold rounded-lg transition-colors border-0 cursor-pointer flex items-center space-x-1"
+              className="px-3.5 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-350 text-[10px] sm:text-xs font-bold rounded-lg transition-colors border-0 cursor-pointer flex items-center space-x-1"
               title="Edit Issue Title, Description, and Media"
             >
               <Edit3 className="w-3.5 h-3.5" />
@@ -246,7 +246,7 @@ export default function IssueDetails({
             </button>
             <button
               onClick={() => setIsConfirmDeleteOpen(true)}
-              className="px-3.5 py-1.5 bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold rounded-lg transition-colors border-0 cursor-pointer flex items-center space-x-1"
+              className="px-3.5 py-1.5 bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 text-[10px] sm:text-xs font-bold rounded-lg transition-colors border-0 cursor-pointer flex items-center space-x-1"
               title="Delete Issue Report permanently"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -366,7 +366,7 @@ export default function IssueDetails({
                 </div>
 
                 {/* Title, reporter & location */}
-                <div className="p-8 space-y-6">
+                <div className="p-4 sm:p-8 space-y-6">
                   <div className="space-y-3">
                     <h1 className="text-xl md:text-2xl font-bold text-slate-950 dark:text-slate-100 font-sans tracking-tight">
                       {issue.title}
@@ -423,7 +423,7 @@ export default function IssueDetails({
                             } ${isActive ? 'ring-4 ring-emerald-500/15 scale-110' : ''}`}>
                               {isCompleted ? '✓' : idx + 1}
                             </div>
-                            <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 mt-2 tracking-wide uppercase max-w-[65px] text-center leading-tight">
+                            <span className="text-[6px] sm:text-[9px] font-bold text-slate-500 dark:text-slate-400 mt-2 tracking-wide uppercase max-w-[65px] text-center leading-tight">
                               {step.replace('_', ' ')}
                             </span>
                           </div>
@@ -458,7 +458,7 @@ export default function IssueDetails({
           </div>
 
           {/* Citizen comments & verification timeline */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 shadow-sm space-y-6">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-8 shadow-sm space-y-6">
             <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm flex items-center space-x-2">
               <MessageSquare className="w-5 h-5 text-slate-500" />
               <span>Verifications & Local Log ({filteredVerifications.length})</span>
@@ -569,7 +569,7 @@ export default function IssueDetails({
         <div className="space-y-6">
           
           {/* Priority Score Summary */}
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+          <div className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
             <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm">Incident Metrics</h3>
             
             <div className="grid grid-cols-2 gap-4">
@@ -600,7 +600,7 @@ export default function IssueDetails({
           </div>
 
           {/* Reported Location Map Card */}
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+          <div className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
             <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm flex items-center justify-between">
               <span>Incident Location Map</span>
               <div className="flex items-center gap-2">
@@ -660,7 +660,7 @@ export default function IssueDetails({
 
           {/* Gemini AI Summary Card */}
           {issue.aiSummary && (
-            <div className="bg-gradient-to-br from-emerald-950 to-emerald-900 text-emerald-50 p-6 rounded-2xl border border-emerald-900 shadow-sm space-y-3.5">
+            <div className="bg-gradient-to-br from-emerald-950 to-emerald-900 text-emerald-50 p-4 sm:p-6 rounded-2xl border border-emerald-900 shadow-sm space-y-3.5">
               <div className="flex items-center space-x-2">
                 <Sparkles className="w-5 h-5 text-emerald-300" />
                 <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-300">Gemini Scan Summary</span>
@@ -677,7 +677,7 @@ export default function IssueDetails({
                   {/* Admin Control Module Trigger */}
           {isAuthorizedToResolve && (
             <>
-              <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+              <div className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
                 <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm">Coordinating Actions</h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">Only authorized Admin, Resolver, or Super Admin personnel may change ticket resolutions.</p>
                 
@@ -753,7 +753,7 @@ export default function IssueDetails({
 
               {/* Admin action panel drawer details */}
               {showAdminPanel && (
-                <form onSubmit={handleAdminFormSubmit} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md space-y-4 animate-scale-up">
+                <form onSubmit={handleAdminFormSubmit} className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md space-y-4 animate-scale-up">
                   <h4 className="font-bold text-slate-900 dark:text-slate-100 text-xs">Resolve Ticket Details</h4>
                   
                   <div>

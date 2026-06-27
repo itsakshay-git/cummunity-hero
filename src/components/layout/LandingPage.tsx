@@ -76,8 +76,9 @@ export default function LandingPage({ onStart }: LandingPageProps) {
       <header className="border-b border-slate-900 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50 px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="p-2.5 bg-emerald-600 rounded-xl text-white shadow-[0_0_20px_rgba(16,185,129,0.4)]">
-              <Shield className="w-5 h-5" />
+            <div className="p-2.5 rounded-xl text-white shadow-[0_0_20px_rgba(16,185,129,0.4)]">
+              {/* <Shield className="w-5 h-5" /> */}
+              <img className="w-6 h-6" src={"community_hero_logo.png"} alt="Community Hero Logo" />
             </div>
             <div>
               <span className="font-sans font-black text-lg tracking-tight text-white block">Community Hero</span>
