@@ -1,4 +1,14 @@
 steps:
+  - name: alpine
+    entrypoint: sh
+    args:
+      - -c
+      - |
+        case "${_VITE_FIREBASE_API_KEY}" in
+          AIza*) echo "Firebase API key substitution exists";;
+          *) echo "Missing or invalid _VITE_FIREBASE_API_KEY"; exit 1;;
+        esac
+        
   - name: gcr.io/cloud-builders/docker
     args:
       - build
