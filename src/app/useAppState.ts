@@ -730,6 +730,9 @@ export function useAppState() {
       updatedAt: new Date().toISOString(),
     };
     setCurrentUser(updatedProfile);
+    if (updates.role) {
+      setCurrentRole(updates.role);
+    }
 
     try {
       const userDocRef = doc(db, 'users', currentUser.id);
