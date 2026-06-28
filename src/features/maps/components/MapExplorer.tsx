@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Map as GMap, AdvancedMarker, InfoWindow, Pin, useMap } from '@vis.gl/react-google-maps';
-import { Map as MapIcon, Filter, AlertTriangle, Shield, CheckCircle, Search, Target, ChevronRight, Sparkles, Compass } from 'lucide-react';
+import { Map as MapIcon, Filter, AlertTriangle, Shield, CheckCircle, Search, Target, ChevronRight, Sparkles, Compass, Heart, MapPin } from 'lucide-react';
 import { Issue, IssueCategory, IssueStatus, Community } from '../../../types';
 import { GoogleMapSection, hasValidKey } from './GoogleMapSection';
 import OpenStreetMapSection, { OSMZone } from './OpenStreetMapSection';
@@ -52,7 +52,7 @@ export default function MapExplorer({ issues, communities, onSelectIssue, userCo
   const [searchQuery, setSearchQuery] = useState('');
   const [activeMarkerIssue, setActiveMarkerIssue] = useState<Issue | null>(null);
   const [mapProvider, setMapProvider] = useState<'google' | 'osm'>(() => {
-    return (localStorage.getItem('default_map_provider') as 'google' | 'osm') || 'osm';
+    return 'osm';
   });
 
   // Center coordinates (Chandrapur default)
@@ -202,6 +202,7 @@ export default function MapExplorer({ issues, communities, onSelectIssue, userCo
 
         {/* Map Provider Selector */}
         <div className="flex flex-col space-y-2 items-center md:flex-row md:space-y-0 md:space-x-2 md:self-end">
+          {/* Google Maps disabled for hackathon demo until API billing/key is restored.
           <button
             onClick={() => setMapProvider('google')}
             disabled={!hasValidKey}
@@ -212,6 +213,7 @@ export default function MapExplorer({ issues, communities, onSelectIssue, userCo
           >
             Google Maps
           </button>
+          */}
           <button
             onClick={() => setMapProvider('osm')}
             className={`px-2.5 py-1.5 rounded-lg text-[9px] font-bold transition-all flex items-center gap-1 cursor-pointer border-0 ${mapProvider === 'osm'
@@ -504,6 +506,79 @@ interface IncidentCardRowProps {
 }
 
 function IncidentCardRow({ issue, onClick, isActive }: IncidentCardRowProps) {
+  const categoryColor = CATEGORY_COLORS[issue.category] || '#0D9488';
+  const supportCount = issue.supporterCount ?? issue.supportCount ?? 0;
+  const verificationCount = issue.verificationCount ?? 0;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-full text-left rounded-xl border bg-white dark:bg-slate-900 transition-all duration-200 cursor-pointer flex items-start gap-3 p-3 hover:shadow-sm group ${isActive
+        ? "border-emerald-500 dark:border-emerald-500 ring-2 ring-emerald-500/10 bg-emerald-50/30 dark:bg-emerald-950/10"
+        : "border-slate-200/70 dark:border-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700"
+        }`}
+    >
+      <div className="relative w-14 h-14 flex-shrink-0 overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+        {issue.imageUrl ? (
+          <img
+            src={issue.imageUrl}
+            alt={issue.title}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <AlertTriangle className="w-5 h-5 text-slate-400" />
+          </div>
+        )}
+        <span className="absolute left-1.5 bottom-1.5 w-2.5 h-2.5 rounded-full ring-2 ring-white dark:ring-slate-900" style={{ backgroundColor: categoryColor }} />
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className="text-[9px] font-black uppercase tracking-wide text-slate-400 dark:text-slate-500 truncate">
+                {issue.category}
+              </span>
+              <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700 flex-shrink-0" />
+              <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 truncate">
+                {issue.status.replace("_", " ")}
+              </span>
+            </div>
+            <h4 className="font-extrabold text-[13px] text-slate-900 dark:text-slate-100 leading-snug line-clamp-2 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+              {issue.title}
+            </h4>
+          </div>
+          <Badge variant="severity" value={issue.severity}>
+            {issue.severity}
+          </Badge>
+        </div>
+
+        <p className="mt-1.5 flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400 min-w-0">
+          <MapPin className="w-3 h-3 flex-shrink-0 text-slate-400" />
+          <span className="truncate">{issue.address}</span>
+        </p>
+
+        <div className="mt-2 flex items-center justify-between gap-2 text-[10px] text-slate-500 dark:text-slate-400">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="inline-flex items-center gap-1 font-semibold">
+              <Heart className="w-3 h-3 text-rose-500" />
+              {supportCount}
+            </span>
+            <span className="inline-flex items-center gap-1 font-semibold">
+              <CheckCircle className="w-3 h-3 text-emerald-500" />
+              {verificationCount}
+            </span>
+          </div>
+          <ChevronRight className={`w-3.5 h-3.5 flex-shrink-0 transition-transform ${isActive ? 'text-emerald-600 translate-x-0.5' : 'text-slate-300 dark:text-slate-600 group-hover:translate-x-0.5'}`} />
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function LegacyIncidentCardRow({ issue, onClick, isActive }: IncidentCardRowProps) {
   const categoryEmojis: Record<string, string> = {
     Pothole: "🕳️",
     Garbage: "🗑️",

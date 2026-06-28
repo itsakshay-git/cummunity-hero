@@ -1968,8 +1968,10 @@ export function useAppState() {
     window.location.hash = `#/profile?id=${userId}`;
   }, []);
 
-  const handleSetSelectedCommunityId = useCallback((id: string) => {
+  const handleSetSelectedCommunityId = useCallback((id: string, options?: { navigate?: boolean }) => {
     setSelectedCommunityId(id);
+    if (options?.navigate === false) return;
+
     if (id === 'all') {
       window.location.hash = '#/communities';
     } else {

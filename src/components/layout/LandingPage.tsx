@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Shield, MapPin, AlertTriangle, ArrowRight, Award, Users, 
   CheckCircle2, Flame, ThumbsUp, MessageSquare, Sparkles,
-  Tool, ShieldCheck, Cpu, Database, Eye
+  ShieldCheck, Cpu, Database, Eye
 } from 'lucide-react';
 
 interface LandingPageProps {
@@ -58,6 +58,104 @@ const mockActivityFeed = [
   }
 ];
 
+// Role data now carries its portrait artwork alongside the existing copy.
+// Logic (onStart calls, routing, etc.) is untouched — this only adds `image`.
+const roleData = [
+  {
+    key: "Citizen",
+    label: "Citizen",
+    image: "/roles/Citizen.png",
+    title: "The Eyes on the Street",
+    description:
+      "Reports local hazards (potholes, garbage, water leaks), votes to verify neighbor reports, registers as supporters, and completes daily quest cards.",
+    reward: "⚡ +100 XP (Report) · +15 XP (Verify)",
+    accent: "emerald",
+  },
+  {
+    key: "Resolver",
+    label: "Resolver",
+    image: "/roles/Resolver.png",
+    title: "The Hands of Resolution",
+    description:
+      "Assigned by admins to execute repairs, claims open community reports, posts status updates, and uploads visual proof of completed fixes.",
+    reward: "🛠️ +150 XP per resolved issue",
+    accent: "indigo",
+  },
+  {
+    key: "Community Admin",
+    label: "Community Admin",
+    image: "/roles/Community Admin.png",
+    title: "Space Coordinators",
+    description:
+      "Manages localized private spaces, approves pending membership join requests, assigns resolvers, and organizes community challenges.",
+    reward: "📌 Launches community quests",
+    accent: "amber",
+  },
+  {
+    key: "Authority",
+    label: "Authority",
+    image: "/roles/Authority.png",
+    title: "Official Overseers",
+    description:
+      "Verifies issues as \"Officially Confirmed\", coordinates public department budgets, and creates city-wide daily/weekly Civic Hub campaigns.",
+    reward: "🏛️ Launches city-wide quests",
+    accent: "rose",
+  },
+] as const;
+
+// Tailwind class lookups keyed by accent so we avoid building dynamic
+// class strings (which Tailwind can't statically extract / purge).
+const accentStyles = {
+  emerald: {
+    glowFrom: "from-emerald-500/30",
+    badgeBg: "bg-emerald-500/15",
+    badgeText: "text-emerald-400",
+    badgeBorder: "border-emerald-500/30",
+    rewardBg: "bg-emerald-500/5",
+    rewardBorder: "border-emerald-500/10",
+    rewardText: "text-emerald-400",
+    cardBorder: "hover:border-emerald-500/40",
+    shadow: "hover:shadow-[0_20px_50px_-15px_rgba(16,185,129,0.35)]",
+    textHover: "group-hover:text-emerald-400",
+  },
+  indigo: {
+    glowFrom: "from-indigo-500/30",
+    badgeBg: "bg-indigo-500/15",
+    badgeText: "text-indigo-400",
+    badgeBorder: "border-indigo-500/30",
+    rewardBg: "bg-indigo-500/5",
+    rewardBorder: "border-indigo-500/10",
+    rewardText: "text-indigo-400",
+    cardBorder: "hover:border-indigo-500/40",
+    shadow: "hover:shadow-[0_20px_50px_-15px_rgba(99,102,241,0.35)]",
+    textHover: "group-hover:text-indigo-400",
+  },
+  amber: {
+    glowFrom: "from-amber-500/30",
+    badgeBg: "bg-amber-500/15",
+    badgeText: "text-amber-400",
+    badgeBorder: "border-amber-500/30",
+    rewardBg: "bg-amber-500/5",
+    rewardBorder: "border-amber-500/10",
+    rewardText: "text-amber-400",
+    cardBorder: "hover:border-amber-500/40",
+    shadow: "hover:shadow-[0_20px_50px_-15px_rgba(245,158,11,0.35)]",
+    textHover: "group-hover:text-amber-400",
+  },
+  rose: {
+    glowFrom: "from-rose-500/30",
+    badgeBg: "bg-rose-500/15",
+    badgeText: "text-rose-400",
+    badgeBorder: "border-rose-500/30",
+    rewardBg: "bg-rose-500/5",
+    rewardBorder: "border-rose-500/10",
+    rewardText: "text-rose-400",
+    cardBorder: "hover:border-rose-500/40",
+    shadow: "hover:shadow-[0_20px_50px_-15px_rgba(244,63,94,0.35)]",
+    textHover: "group-hover:text-rose-400",
+  },
+} as const;
+
 export default function LandingPage({ onStart }: LandingPageProps) {
   const [activePreviewPost, setActivePreviewPost] = useState(0);
 
@@ -89,14 +187,14 @@ export default function LandingPage({ onStart }: LandingPageProps) {
             <button 
               id="nav-enter-citizen"
               onClick={() => onStart('Citizen')} 
-              className="text-[10px] font-black uppercase tracking-wider text-slate-400 hover:text-emerald-400 transition-colors cursor-pointer bg-transparent border-0"
+              className="hidden sm:block text-[10px] font-black uppercase tracking-wider text-slate-400 hover:text-emerald-400 transition-colors cursor-pointer bg-transparent border-0"
             >
               Sign In
             </button>
             <button 
               id="nav-get-started"
               onClick={() => onStart('Citizen')} 
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:scale-105 active:scale-95 cursor-pointer border-0"
+              className="hidden sm:block px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:scale-105 active:scale-95 cursor-pointer border-0"
             >
               Get Started
             </button>
@@ -161,7 +259,7 @@ export default function LandingPage({ onStart }: LandingPageProps) {
                 <button 
                   id="hero-start-admin"
                   onClick={() => onStart('Community Admin')} 
-                  className="w-full sm:w-auto px-8 py-4 bg-slate-900 hover:bg-slate-850 text-slate-200 font-bold border border-slate-800 rounded-xl transition-all flex items-center justify-center space-x-2 cursor-pointer hover:scale-105 active:scale-95 text-xs uppercase tracking-wider"
+                  className="w-full sm:w-auto px-8 py-4 bg-slate-900 hover:bg-slate-800 text-slate-200 font-bold border border-slate-800 rounded-xl transition-all flex items-center justify-center space-x-2 cursor-pointer hover:scale-105 active:scale-95 text-xs uppercase tracking-wider"
                 >
                   <span>Official Authority Login</span>
                 </button>
@@ -195,7 +293,7 @@ export default function LandingPage({ onStart }: LandingPageProps) {
                       className={`px-3 py-1.5 rounded-lg text-[9px] font-extrabold uppercase tracking-wider border transition-all cursor-pointer ${
                         activePreviewPost === idx
                           ? 'bg-emerald-600/10 border-emerald-500/40 text-emerald-400'
-                          : 'bg-slate-950/20 border-slate-850 text-slate-450 hover:bg-slate-950/40'
+                          : 'bg-slate-950/20 border-slate-800 text-slate-400 hover:bg-slate-950/40'
                       }`}
                     >
                       {post.name.split(' ')[0]}
@@ -245,7 +343,7 @@ export default function LandingPage({ onStart }: LandingPageProps) {
                                 <span>{post.votes}</span>
                               </span>
                               <span className="flex items-center space-x-1">
-                                <MessageSquare className="w-3.5 h-3.5 text-slate-550" />
+                                <MessageSquare className="w-3.5 h-3.5 text-slate-500" />
                                 <span>{post.comments}</span>
                               </span>
                             </div>
@@ -265,7 +363,7 @@ export default function LandingPage({ onStart }: LandingPageProps) {
                   </AnimatePresence>
                 </div>
 
-                <div className="text-[9px] text-slate-505 text-center leading-normal pt-1 flex items-center justify-center space-x-1.5 font-medium">
+                <div className="text-[9px] text-slate-500 text-center leading-normal pt-1 flex items-center justify-center space-x-1.5 font-medium">
                   <CheckCircle2 className="w-3 h-3 text-emerald-500" />
                   <span>Interactive simulation. Real reports sync live with authorities.</span>
                 </div>
@@ -276,7 +374,7 @@ export default function LandingPage({ onStart }: LandingPageProps) {
           </div>
         </section>
 
-        {/* Section 2: Choose Your Civic Path (Creative addition of Roles & Responsibilities) */}
+        {/* Section 2: Choose Your Civic Path — character-select style role cards */}
         <section className="px-6 py-20 bg-slate-900/20 border-t border-slate-900 relative">
           <div className="max-w-7xl mx-auto">
             <div className="text-center max-w-xl mx-auto mb-16">
@@ -285,62 +383,58 @@ export default function LandingPage({ onStart }: LandingPageProps) {
               <p className="text-slate-400 text-xs md:text-sm font-medium">Four customized roles work in collaboration to build robust neighborhood workspaces.</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              {/* Role 1: Citizen */}
-              <div className="p-5 rounded-2xl bg-slate-900/40 border border-slate-800 hover:border-emerald-500/30 transition-all duration-350 space-y-4">
-                <span className="px-2 py-0.5 rounded text-[8px] font-extrabold uppercase font-mono tracking-wider bg-slate-800 text-slate-350">
-                  Citizen
-                </span>
-                <h4 className="font-extrabold text-sm text-white">The Eyes on the Street</h4>
-                <p className="text-[11px] text-slate-400 leading-relaxed font-medium">
-                  Reports local hazards (potholes, garbage, water leaks), votes to verify neighbor reports, registers as supporters, and completes daily quest cards.
-                </p>
-                <div className="text-[9px] font-mono text-emerald-400 font-bold bg-emerald-500/5 p-2 rounded-lg border border-emerald-500/10">
-                  ⚡ Rewards: +100 XP (Report), +15 XP (Verify)
-                </div>
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {roleData.map((role, idx) => {
+                const styles = accentStyles[role.accent];
+                return (
+                  <motion.div
+                    key={role.key}
+                    initial={{ opacity: 0, y: 24 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: "-60px" }}
+                    transition={{ duration: 0.45, delay: idx * 0.08 }}
+                    whileHover={{ y: -6 }}
+                    whileTap={{ scale: 0.97 }}
+                    className={`group relative rounded-2xl bg-slate-900/40 border border-slate-800 transition-colors duration-300 overflow-hidden cursor-pointer ${styles.cardBorder} ${styles.shadow}`}
+                  >
+                    {/* Large portrait panel — the visual anchor of the card */}
+                    <div className="relative h-48 overflow-hidden bg-slate-950">
+                      <motion.img
+                        src={role.image}
+                        alt={`${role.label} role illustration`}
+                        className="absolute inset-0 w-full h-full object-cover"
+                        initial={{ scale: 1.08 }}
+                        whileHover={{ scale: 1.16 }}
+                        transition={{ duration: 0.5, ease: "easeOut" }}
+                      />
+                      {/* Gradient wash so the badge + bottom edge stay legible over any artwork */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/10 to-transparent" />
+                      <div className={`absolute inset-0 bg-gradient-to-br ${styles.glowFrom} to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 mix-blend-overlay`} />
 
-              {/* Role 2: Resolver */}
-              <div className="p-5 rounded-2xl bg-slate-900/40 border border-slate-800 hover:border-indigo-500/30 transition-all duration-350 space-y-4">
-                <span className="px-2 py-0.5 rounded text-[8px] font-extrabold uppercase font-mono tracking-wider bg-indigo-900/30 text-indigo-400 border border-indigo-900/40">
-                  Resolver
-                </span>
-                <h4 className="font-extrabold text-sm text-white">The Hands of Resolution</h4>
-                <p className="text-[11px] text-slate-400 leading-relaxed font-medium">
-                  Assigned by admins to execute repairs, claims open community reports, posts status updates, and uploads visual proof of completed fixes.
-                </p>
-                <div className="text-[9px] font-mono text-indigo-400 font-bold bg-indigo-500/5 p-2 rounded-lg border border-indigo-500/10">
-                  🛠️ Rewards: +150 XP per resolved issue
-                </div>
-              </div>
+                      {/* Role badge sits on the artwork, top-left, game-HUD style */}
+                      <span className={`absolute top-3 left-3 px-2.5 py-1 rounded-lg text-[8px] font-extrabold uppercase font-mono tracking-wider backdrop-blur-sm border ${styles.badgeBg} ${styles.badgeText} ${styles.badgeBorder}`}>
+                        {role.label}
+                      </span>
 
-              {/* Role 3: Community Admin */}
-              <div className="p-5 rounded-2xl bg-slate-900/40 border border-slate-800 hover:border-amber-500/30 transition-all duration-350 space-y-4">
-                <span className="px-2 py-0.5 rounded text-[8px] font-extrabold uppercase font-mono tracking-wider bg-amber-900/30 text-amber-400 border border-amber-900/40">
-                  Community Admin
-                </span>
-                <h4 className="font-extrabold text-sm text-white">Space Coordinators</h4>
-                <p className="text-[11px] text-slate-400 leading-relaxed font-medium">
-                  Manages localized private spaces, approves pending membership join requests, assigns resolvers, and organizes community challenges.
-                </p>
-                <div className="text-[9px] font-mono text-amber-400 font-bold bg-amber-500/5 p-2 rounded-lg border border-amber-500/10">
-                  📌 Action: Launch community quests
-                </div>
-              </div>
+                      {/* Title overlaps the image/content boundary for a layered feel */}
+                      <h4 className="absolute bottom-3 left-4 right-4 font-extrabold text-base text-white leading-tight drop-shadow-md">
+                        {role.title}
+                      </h4>
+                    </div>
 
-              {/* Role 4: Authority */}
-              <div className="p-5 rounded-2xl bg-slate-900/40 border border-slate-800 hover:border-rose-500/30 transition-all duration-350 space-y-4">
-                <span className="px-2 py-0.5 rounded text-[8px] font-extrabold uppercase font-mono tracking-wider bg-rose-900/30 text-rose-455 border border-rose-900/40">
-                  Authority
-                </span>
-                <h4 className="font-extrabold text-sm text-white">Official Overseers</h4>
-                <p className="text-[11px] text-slate-400 leading-relaxed font-medium">
-                  Verifies issues as "Officially Confirmed", coordinates public department budgets, and creates city-wide daily/weekly Civic Hub campaigns.
-                </p>
-                <div className="text-[9px] font-mono text-rose-455 font-bold bg-rose-500/5 p-2 rounded-lg border border-rose-500/10">
-                  🏛️ Action: Launch city-wide quests
-                </div>
-              </div>
+                    {/* Copy + reward */}
+                    <div className="p-5 space-y-4">
+                      <p className="text-[11px] text-slate-400 leading-relaxed font-medium">
+                        {role.description}
+                      </p>
+                      <div className={`flex items-center justify-between text-[9px] font-mono font-bold px-3 py-2 rounded-lg border ${styles.rewardBg} ${styles.rewardBorder} ${styles.rewardText}`}>
+                        <span>{role.reward}</span>
+                        <ArrowRight className={`w-3.5 h-3.5 text-slate-600 ${styles.textHover} group-hover:translate-x-0.5 transition-all`} />
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
             </div>
           </div>
         </section>
@@ -356,23 +450,23 @@ export default function LandingPage({ onStart }: LandingPageProps) {
                 
                 <div className="flex justify-between items-center pb-3 border-b border-slate-800">
                   <div className="flex items-center space-x-2">
-                    <Cpu className="w-4.5 h-4.5 text-emerald-450 animate-pulse" />
+                    <Cpu className="w-4.5 h-4.5 text-emerald-400 animate-pulse" />
                     <span className="text-[10px] font-mono text-slate-300 font-bold">GEMINI COGNITIVE ENGINE</span>
                   </div>
                   <span className="text-[8px] font-mono bg-emerald-950 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded font-black">ACTIVE</span>
                 </div>
 
-                <div className="space-y-4 my-4 font-mono text-[9px] text-slate-450 leading-relaxed">
+                <div className="space-y-4 my-4 font-mono text-[9px] text-slate-400 leading-relaxed">
                   <div className="flex items-start space-x-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-450 mt-0.5" />
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 mt-0.5" />
                     <span>Analyzing Image... recognized: <code className="bg-slate-950 px-1 py-0.5 text-white rounded">Pothole</code> (98% confidence)</span>
                   </div>
                   <div className="flex items-start space-x-2">
-                    <Database className="w-3.5 h-3.5 text-emerald-450 mt-0.5" />
+                    <Database className="w-3.5 h-3.5 text-emerald-400 mt-0.5" />
                     <span>Geo-Query Duplicates Check... found 0 matching open issues within 20m.</span>
                   </div>
                   <div className="flex items-start space-x-2">
-                    <Eye className="w-3.5 h-3.5 text-emerald-450 mt-0.5" />
+                    <Eye className="w-3.5 h-3.5 text-emerald-400 mt-0.5" />
                     <span>Assigning severity index score: <code className="bg-slate-950 px-1 py-0.5 text-amber-400 rounded">Medium (Risk: 3/5)</code></span>
                   </div>
                 </div>
@@ -393,7 +487,7 @@ export default function LandingPage({ onStart }: LandingPageProps) {
 
               <div className="space-y-4 font-sans text-xs">
                 <div className="flex items-start space-x-3.5">
-                  <div className="p-2 bg-emerald-950/50 border border-emerald-500/20 text-emerald-450 rounded-xl mt-1">
+                  <div className="p-2 bg-emerald-950/50 border border-emerald-500/20 text-emerald-400 rounded-xl mt-1">
                     <Cpu className="w-4.5 h-4.5" />
                   </div>
                   <div>
@@ -403,7 +497,7 @@ export default function LandingPage({ onStart }: LandingPageProps) {
                 </div>
 
                 <div className="flex items-start space-x-3.5">
-                  <div className="p-2 bg-teal-950/50 border border-teal-500/20 text-teal-450 rounded-xl mt-1">
+                  <div className="p-2 bg-teal-950/50 border border-teal-500/20 text-teal-400 rounded-xl mt-1">
                     <Database className="w-4.5 h-4.5" />
                   </div>
                   <div>
@@ -413,7 +507,7 @@ export default function LandingPage({ onStart }: LandingPageProps) {
                 </div>
 
                 <div className="flex items-start space-x-3.5">
-                  <div className="p-2 bg-indigo-950/50 border border-indigo-500/20 text-indigo-455 rounded-xl mt-1">
+                  <div className="p-2 bg-indigo-950/50 border border-indigo-500/20 text-indigo-400 rounded-xl mt-1">
                     <ShieldCheck className="w-4.5 h-4.5" />
                   </div>
                   <div>
@@ -432,7 +526,7 @@ export default function LandingPage({ onStart }: LandingPageProps) {
         <section className="px-6 py-16 bg-slate-900/10 border-t border-slate-900 transition-colors">
           <div className="max-w-7xl mx-auto">
             <div className="text-center max-w-xl mx-auto mb-16">
-              <span className="text-xs font-semibold text-emerald-400 uppercase tracking-widest font-mono font-bold">The Civic Engine</span>
+              <span className="text-xs font-semibold text-emerald-400 uppercase tracking-widest font-mono">The Civic Engine</span>
               <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight mt-1 mb-4">Core Civic Workflow</h2>
               <p className="text-slate-400 text-xs md:text-sm font-medium">A transparent, community-authoritative process from detection to verified resolution.</p>
             </div>
@@ -440,7 +534,7 @@ export default function LandingPage({ onStart }: LandingPageProps) {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
               {/* Feature 1 */}
               <div className="p-6 rounded-2xl bg-slate-900/30 border border-slate-900 flex flex-col h-full hover:-translate-y-1.5 hover:shadow-md hover:border-emerald-500/20 transition-all duration-300 cursor-default" id="workflow-card-1">
-                <div className="w-11 h-11 bg-emerald-950/50 text-emerald-450 border border-emerald-500/20 rounded-xl flex items-center justify-center mb-6 shadow-inner">
+                <div className="w-11 h-11 bg-emerald-950/50 text-emerald-400 border border-emerald-500/20 rounded-xl flex items-center justify-center mb-6 shadow-inner">
                   <MapPin className="w-5 h-5" />
                 </div>
                 <h3 className="text-sm font-extrabold text-white mb-2">1. Report Locally</h3>
@@ -451,7 +545,7 @@ export default function LandingPage({ onStart }: LandingPageProps) {
 
               {/* Feature 2 */}
               <div className="p-6 rounded-2xl bg-slate-900/30 border border-slate-900 flex flex-col h-full hover:-translate-y-1.5 hover:shadow-md hover:border-teal-500/20 transition-all duration-300 cursor-default" id="workflow-card-2">
-                <div className="w-11 h-11 bg-teal-950/50 text-teal-455 border border-teal-500/20 rounded-xl flex items-center justify-center mb-6 shadow-inner">
+                <div className="w-11 h-11 bg-teal-950/50 text-teal-400 border border-teal-500/20 rounded-xl flex items-center justify-center mb-6 shadow-inner">
                   <AlertTriangle className="w-5 h-5" />
                 </div>
                 <h3 className="text-sm font-extrabold text-white mb-2">2. AI Diagnosis</h3>
@@ -462,7 +556,7 @@ export default function LandingPage({ onStart }: LandingPageProps) {
 
               {/* Feature 3 */}
               <div className="p-6 rounded-2xl bg-slate-900/30 border border-slate-900 flex flex-col h-full hover:-translate-y-1.5 hover:shadow-md hover:border-blue-500/20 transition-all duration-300 cursor-default" id="workflow-card-3">
-                <div className="w-11 h-11 bg-blue-950/50 text-blue-450 border border-blue-500/20 rounded-xl flex items-center justify-center mb-6 shadow-inner">
+                <div className="w-11 h-11 bg-blue-950/50 text-blue-400 border border-blue-500/20 rounded-xl flex items-center justify-center mb-6 shadow-inner">
                   <Users className="w-5 h-5" />
                 </div>
                 <h3 className="text-sm font-extrabold text-white mb-2">3. Vote & Verify</h3>
@@ -473,7 +567,7 @@ export default function LandingPage({ onStart }: LandingPageProps) {
 
               {/* Feature 4 */}
               <div className="p-6 rounded-2xl bg-slate-900/30 border border-slate-900 flex flex-col h-full hover:-translate-y-1.5 hover:shadow-md hover:border-indigo-500/20 transition-all duration-300 cursor-default" id="workflow-card-4">
-                <div className="w-11 h-11 bg-indigo-950/50 text-indigo-450 border border-indigo-500/20 rounded-xl flex items-center justify-center mb-6 shadow-inner">
+                <div className="w-11 h-11 bg-indigo-950/50 text-indigo-400 border border-indigo-500/20 rounded-xl flex items-center justify-center mb-6 shadow-inner">
                   <Award className="w-5 h-5" />
                 </div>
                 <h3 className="text-sm font-extrabold text-white mb-2">4. Verified Resolution</h3>
@@ -497,18 +591,18 @@ export default function LandingPage({ onStart }: LandingPageProps) {
                 Build a Stronger Community.
               </h2>
               <p className="text-slate-400 leading-relaxed text-xs md:text-sm font-medium">
-                Earn points and climb the citizen leaderboard by filing valid reports, verifying nearby issues, or coordinating repair efforts. Every community space maintains a dynamic **Community Health Score** based on active issues, resolution speed, and report accuracy.
+                Earn points and climb the citizen leaderboard by filing valid reports, verifying nearby issues, or coordinating repair efforts. Every community space maintains a dynamic <strong className="text-slate-200 font-bold">Community Health Score</strong> based on active issues, resolution speed, and report accuracy.
               </p>
               <ul className="space-y-3">
-                <li className="flex items-center space-x-2.5 text-xs text-slate-350">
+                <li className="flex items-center space-x-2.5 text-xs text-slate-300">
                   <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
                   <span className="font-medium">Earn XP rewards & claim badges for reporting and resolving issues</span>
                 </li>
-                <li className="flex items-center space-x-2.5 text-xs text-slate-350">
+                <li className="flex items-center space-x-2.5 text-xs text-slate-300">
                   <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
                   <span className="font-medium">Interactive leaderboard showcasing top civic champions</span>
                 </li>
-                <li className="flex items-center space-x-2.5 text-xs text-slate-350">
+                <li className="flex items-center space-x-2.5 text-xs text-slate-300">
                   <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
                   <span className="font-medium">Monthly AI locality insight report summarizing neighborhood health</span>
                 </li>
@@ -516,7 +610,7 @@ export default function LandingPage({ onStart }: LandingPageProps) {
             </div>
 
             {/* Interactive Champion Card mockup */}
-            <div className="flex-1 bg-slate-900/50 backdrop-blur-md p-8 rounded-3xl border border-slate-800 shadow-md w-full max-w-md relative overflow-hidden transition-transform duration-500 hover:scale-102">
+            <div className="flex-1 bg-slate-900/50 backdrop-blur-md p-8 rounded-3xl border border-slate-800 shadow-md w-full max-w-md relative overflow-hidden transition-transform duration-500 hover:scale-[1.02]">
               <div className="absolute top-0 right-0 w-24 h-24 bg-teal-500/10 rounded-bl-full pointer-events-none" />
               <h4 className="font-bold text-slate-300 text-xs mb-4 uppercase font-mono tracking-wider">Sample Champion Card</h4>
               <div className="flex items-center space-x-4 mb-6">
@@ -552,7 +646,7 @@ export default function LandingPage({ onStart }: LandingPageProps) {
       </main>
 
       {/* Footer */}
-      <footer className="bg-slate-950 text-slate-555 py-12 px-6 border-t border-slate-900 text-center text-xs">
+      <footer className="bg-slate-950 text-slate-500 py-12 px-6 border-t border-slate-900 text-center text-xs">
         <p className="font-medium">© 2026 Community Hero. Built for Google AI Studio Civic Hackathon.</p>
         <p className="mt-2 text-[9px] text-slate-700">All data is kept in-memory for preview purposes. Phase 2 UI Demonstration.</p>
       </footer>

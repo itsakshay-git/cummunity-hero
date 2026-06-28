@@ -15,7 +15,7 @@ interface DashboardProps {
   onSelectIssue: (id: string) => void;
   onNavigate: (tab: string) => void;
   selectedCommunityId: string;
-  setSelectedCommunityId: (id: string) => void;
+  setSelectedCommunityId: (id: string, options?: { navigate?: boolean }) => void;
   userCoords?: { lat: number; lng: number } | null;
   currentUser?: User | null;
 }
@@ -31,16 +31,6 @@ export default function Dashboard({
   currentUser
 }: DashboardProps) {
 
-  // Sort communities by distance to userCoords if userCoords is available
-  const sortedCommunities = React.useMemo(() => {
-    if (!userCoords) return communities;
-    return [...communities].sort((a, b) => {
-      const distA = getDistanceMeters(userCoords.lat, userCoords.lng, a.latitude, a.longitude);
-      const distB = getDistanceMeters(userCoords.lat, userCoords.lng, b.latitude, b.longitude);
-      return distA - distB;
-    });
-  }, [communities, userCoords]);
-
   // Filter issues based on community selection and proximity scopes
   const filteredIssues = React.useMemo(() => {
     if (selectedCommunityId === 'nearby_5') {
@@ -55,6 +45,20 @@ export default function Dashboard({
       return issues.filter(i => {
         const dist = getDistanceMeters(userCoords.lat, userCoords.lng, i.latitude, i.longitude);
         return dist <= 15000; // 15 km
+      });
+    }
+    if (selectedCommunityId === 'nearby_100') {
+      if (!userCoords) return issues;
+      return issues.filter(i => {
+        const dist = getDistanceMeters(userCoords.lat, userCoords.lng, i.latitude, i.longitude);
+        return dist <= 100000; // 100 km
+      });
+    }
+    if (selectedCommunityId === 'nearby_200') {
+      if (!userCoords) return issues;
+      return issues.filter(i => {
+        const dist = getDistanceMeters(userCoords.lat, userCoords.lng, i.latitude, i.longitude);
+        return dist <= 200000; // 200 km
       });
     }
     if (selectedCommunityId === 'city') {
@@ -93,12 +97,14 @@ export default function Dashboard({
 
   // Dynamic Community Health Calculations for detailed breakdown
   const getCommunityHealthBreakdown = () => {
-    if (selectedCommunityId === 'all' || selectedCommunityId === 'nearby_5' || selectedCommunityId === 'nearby_15' || selectedCommunityId === 'city') {
+    if (selectedCommunityId === 'all' || selectedCommunityId === 'nearby_5' || selectedCommunityId === 'nearby_15' || selectedCommunityId === 'nearby_100' || selectedCommunityId === 'nearby_200' || selectedCommunityId === 'city') {
       const avgReputation = Math.round(communities.reduce((acc, c) => acc + c.reputationScore, 0) / communities.length);
       
       let scopeLabel = "District";
       if (selectedCommunityId === 'nearby_5') scopeLabel = "Proximity (5km)";
       else if (selectedCommunityId === 'nearby_15') scopeLabel = "Proximity (15km)";
+      else if (selectedCommunityId === 'nearby_100') scopeLabel = "Regional (100km)";
+      else if (selectedCommunityId === 'nearby_200') scopeLabel = "Regional (200km)";
       else if (selectedCommunityId === 'city') scopeLabel = "My Location";
 
       return {
@@ -139,10 +145,12 @@ export default function Dashboard({
     const topCat = categoryData[0]?.count > 0 ? categoryData[0].name : "General Audits";
     const criticalCount = filteredIssues.filter(i => i.severity === 'Critical' && i.status !== 'RESOLVED').length;
 
-    if (selectedCommunityId === 'all' || selectedCommunityId === 'nearby_5' || selectedCommunityId === 'nearby_15' || selectedCommunityId === 'city') {
+    if (selectedCommunityId === 'all' || selectedCommunityId === 'nearby_5' || selectedCommunityId === 'nearby_15' || selectedCommunityId === 'nearby_100' || selectedCommunityId === 'nearby_200' || selectedCommunityId === 'city') {
       let scopeTitle = "District Insights";
       if (selectedCommunityId === 'nearby_5') scopeTitle = "Hyperlocal Insights (5km)";
       else if (selectedCommunityId === 'nearby_15') scopeTitle = "Proximity Insights (15km)";
+      else if (selectedCommunityId === 'nearby_100') scopeTitle = "Regional Insights (100km)";
+      else if (selectedCommunityId === 'nearby_200') scopeTitle = "Regional Insights (200km)";
       else if (selectedCommunityId === 'city') scopeTitle = "My Location Insights";
 
       return {
@@ -209,18 +217,15 @@ export default function Dashboard({
             <select 
               id="dashboard-community-select"
               value={selectedCommunityId} 
-              onChange={(e) => setSelectedCommunityId(e.target.value)}
+              onChange={(e) => setSelectedCommunityId(e.target.value, { navigate: false })}
               className="text-xs font-bold text-slate-100 bg-slate-800 border-none outline-none cursor-pointer focus:ring-0 pr-6 pt-0.5"
             >
               <optgroup label="Hyperlocal Proximity" className="bg-slate-900 text-slate-405 text-[10px]">
                 <option value="nearby_5" className="bg-slate-900 text-white">Within 5 km</option>
                 <option value="nearby_15" className="bg-slate-900 text-white">Within 15 km</option>
+                <option value="nearby_100" className="bg-slate-900 text-white">Within 100 km</option>
+                <option value="nearby_200" className="bg-slate-900 text-white">Within 200 km</option>
                 <option value="city" className="bg-slate-900 text-white">My Location</option>
-              </optgroup>
-              <optgroup label="Specific Community Spaces" className="bg-slate-900 text-slate-405 text-[10px]">
-                {sortedCommunities.map(c => (
-                  <option key={c.id} value={c.id} className="bg-slate-900 text-white">{c.name}</option>
-                ))}
               </optgroup>
               <optgroup label="Global Scope" className="bg-slate-900 text-slate-405 text-[10px]">
                 <option value="all" className="bg-slate-900 text-white">Global (All Districts)</option>

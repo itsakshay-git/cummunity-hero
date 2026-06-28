@@ -10,7 +10,7 @@ interface IssuesListProps {
   communities: Community[];
   onSelectIssue: (id: string) => void;
   selectedCommunityId: string;
-  setSelectedCommunityId: (id: string) => void;
+  setSelectedCommunityId: (id: string, options?: { navigate?: boolean }) => void;
   userCoords?: { lat: number; lng: number } | null;
   currentUser?: User | null;
 }
@@ -68,6 +68,20 @@ export default function IssuesList({
       } else {
         const dist = getDistanceMeters(userCoords.lat, userCoords.lng, issue.latitude, issue.longitude);
         matchesCommunity = dist <= 15000;
+      }
+    } else if (selectedCommunityId === 'nearby_100') {
+      if (!userCoords) {
+        matchesCommunity = true;
+      } else {
+        const dist = getDistanceMeters(userCoords.lat, userCoords.lng, issue.latitude, issue.longitude);
+        matchesCommunity = dist <= 100000;
+      }
+    } else if (selectedCommunityId === 'nearby_200') {
+      if (!userCoords) {
+        matchesCommunity = true;
+      } else {
+        const dist = getDistanceMeters(userCoords.lat, userCoords.lng, issue.latitude, issue.longitude);
+        matchesCommunity = dist <= 200000;
       }
     } else if (selectedCommunityId === 'city') {
       const userCity = currentUser?.city || 'Chandrapur';
@@ -136,12 +150,14 @@ export default function IssuesList({
             <select 
               id="filter-select-community"
               value={selectedCommunityId} 
-              onChange={(e) => setSelectedCommunityId(e.target.value)}
+              onChange={(e) => setSelectedCommunityId(e.target.value, { navigate: false })}
               className="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-850 dark:text-slate-105 text-xs rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 cursor-pointer"
             >
               <optgroup label="Hyperlocal Proximity" className="bg-white dark:bg-slate-900 text-slate-400 text-[10px]">
                 <option value="nearby_5" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Within 5 km</option>
                 <option value="nearby_15" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Within 15 km</option>
+                <option value="nearby_100" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Within 100 km</option>
+                <option value="nearby_200" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Within 200 km</option>
                 <option value="city" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">My Location</option>
               </optgroup>
               <optgroup label="Specific Community Spaces" className="bg-white dark:bg-slate-900 text-slate-400 text-[10px]">

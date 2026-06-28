@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Shield, Building2, AlertTriangle, PlusCircle,
   Award, Map, LogOut, User as UserIcon, Users, Compass, Flame, Zap,
-  Search, Sparkles, Settings, Bell, Sun, Moon, MapPin, X, RefreshCw
+  Search, Sparkles, Settings, Bell, Sun, Moon, MapPin, X, RefreshCw, ChevronUp
 } from 'lucide-react';
 
 import AuthModal from '../features/auth/components/AuthModal';
@@ -108,6 +108,9 @@ export default function App() {
   const [feedSearchQuery, setFeedSearchQuery] = React.useState('');
   const [notifDrawerOpen, setNotifDrawerOpen] = React.useState(false);
   const [claimMessage, setClaimMessage] = React.useState<string | null>(null);
+
+  // Mobile bottom-nav "more pages" accordion (Incidents / Challenges / Champions)
+  const [mobileMoreOpen, setMobileMoreOpen] = React.useState(false);
 
   // Civic quest creation states
   const [isCreateCivicQuestOpen, setIsCreateCivicQuestOpen] = React.useState(false);
@@ -291,7 +294,7 @@ export default function App() {
           <div className="font-sans">
             {/* Logo */}
             <div className="flex items-center space-x-2.5 mb-8 cursor-pointer pl-2" onClick={() => handleNavigation('feed')}>
-              <div className="p-2 text-white shadow-sm shadow-emerald-600/10">
+              <div className="p-2 text-white">
                 {/* <Shield className="w-5 h-5" /> */}
                 <img className="w-8 h-8" src={"community_hero_logo.png"} alt="Community Hero Logo" />
               </div>
@@ -1018,8 +1021,76 @@ export default function App() {
         </div>
       </div>
 
+      {/* More-pages accordion panel — sits directly above the bottom nav bar.
+          Surfaces Incidents Directory / Civic Challenges / Civic Champions,
+          which don't have their own slot in the 5-icon bottom bar. */}
+      <AnimatePresence>
+        {mobileMoreOpen && (
+          <>
+            {/* Transparent tap-outside backdrop, mobile only, just for easy dismissal */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setMobileMoreOpen(false)}
+              className="md:hidden fixed inset-0 z-40 bg-transparent"
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 16 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="md:hidden fixed bottom-[56px] left-0 right-0 z-40 bg-white dark:bg-slate-900 border-t border-x border-slate-200 dark:border-slate-800 rounded-t-2xl shadow-[0_-4px_20px_rgba(0,0,0,0.08)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.3)] px-4 pt-3 pb-4"
+            >
+              <div className="grid grid-cols-3 gap-2 pb-6">
+                <button
+                  onClick={() => {
+                    handleNavigation('issues');
+                    setMobileMoreOpen(false);
+                  }}
+                  className={`flex flex-col items-center justify-center space-y-1.5 py-3 rounded-xl cursor-pointer bg-transparent border-0 ${activeTab === 'issues' || activeTab === 'issue-details' ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20' : 'text-slate-500 dark:text-slate-400'}`}
+                >
+                  <AlertTriangle className="w-5 h-5" />
+                  <span className="text-[9px] font-bold leading-tight text-center">Incidents</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    handleNavigation('challenges');
+                    setMobileMoreOpen(false);
+                  }}
+                  className={`flex flex-col items-center justify-center space-y-1.5 py-3 rounded-xl cursor-pointer bg-transparent border-0 ${activeTab === 'challenges' ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20' : 'text-slate-500 dark:text-slate-400'}`}
+                >
+                  <Flame className="w-5 h-5 text-orange-500" />
+                  <span className="text-[9px] font-bold leading-tight text-center">Challenges</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    handleNavigation('leaderboard');
+                    setMobileMoreOpen(false);
+                  }}
+                  className={`flex flex-col items-center justify-center space-y-1.5 py-3 rounded-xl cursor-pointer bg-transparent border-0 ${activeTab === 'leaderboard' ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20' : 'text-slate-500 dark:text-slate-400'}`}
+                >
+                  <Award className="w-5 h-5 text-amber-500" />
+                  <span className="text-[9px] font-bold leading-tight text-center">Champions</span>
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
       {/* Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-6 py-2.5 flex items-center justify-between z-40 shadow-[0_-2px_10px_rgba(0,0,0,0.05)] dark:shadow-[0_-2px_10px_rgba(0,0,0,0.2)] font-sans transition-colors duration-300">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-4 py-2.5 flex items-center justify-between z-40 shadow-[0_-2px_10px_rgba(0,0,0,0.05)] dark:shadow-[0_-2px_10px_rgba(0,0,0,0.2)] font-sans transition-colors duration-300">
+        <button
+          onClick={() => setMobileMoreOpen(prev => !prev)}
+          className="absolute -top-7 left-1/2 -translate-x-1/2 w-11 h-7 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-t-xl flex items-center justify-center cursor-pointer shadow-[0_-2px_6px_rgba(0,0,0,0.04)]"
+        >
+          <motion.div animate={{ rotate: mobileMoreOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
+            <ChevronUp className={`w-4 h-4 ${mobileMoreOpen || activeTab === 'issues' || activeTab === 'issue-details' || activeTab === 'challenges' || activeTab === 'leaderboard' ? 'text-emerald-600' : 'text-slate-400'}`} />
+          </motion.div>
+        </button>
         <button
           onClick={() => handleNavigation('feed')}
           className={`flex flex-col items-center space-y-1 cursor-pointer bg-transparent border-0 ${activeTab === 'feed' ? 'text-emerald-600' : 'text-slate-400'}`}
@@ -1059,6 +1130,7 @@ export default function App() {
           <span className="text-[9px] font-bold">Profile</span>
         </button>
       </nav>
+
       <AuthModal
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}

@@ -118,7 +118,7 @@ export default function SettingsPage({
 
   // Preferences State
   const [defaultMap, setDefaultMap] = useState<'google' | 'osm'>(() => {
-    return (localStorage.getItem('default_map_provider') as 'google' | 'osm') || 'google';
+    return 'osm';
   });
   const [muteNotifications, setMuteNotifications] = useState<boolean>(() => {
     return localStorage.getItem('preferences_mute_notifications') === 'true';
@@ -504,6 +504,7 @@ export default function SettingsPage({
                 </div>
 
                 <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg max-w-xs">
+                  {/* Google Maps disabled for hackathon demo until API billing/key is restored.
                   <button
                     onClick={() => handleMapPreferenceChange('google')}
                     className={`flex-1 py-1.5 rounded-md text-[10px] font-black uppercase transition-all cursor-pointer border-0 ${
@@ -514,6 +515,7 @@ export default function SettingsPage({
                   >
                     Google Maps
                   </button>
+                  */}
                   <button
                     onClick={() => handleMapPreferenceChange('osm')}
                     className={`flex-1 py-1.5 rounded-md text-[10px] font-black uppercase transition-all cursor-pointer border-0 ${
@@ -638,53 +640,6 @@ export default function SettingsPage({
                   >
                     {resetLoading ? 'Clearing & Seeding Database...' : 'Reset & Seed Sandbox Database'}
                   </button>
-                </div>
-
-                {/* Testing Role Switcher */}
-                <div className="p-4 bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 rounded-xl max-w-md space-y-3">
-                  <div className="flex items-start gap-2">
-                    <Shield className="w-4.5 h-4.5 text-indigo-600 dark:text-indigo-400 mt-0.5 flex-shrink-0" />
-                    <div className="text-[10px] text-slate-650 dark:text-slate-350 leading-normal">
-                      <span className="font-extrabold text-slate-800 dark:text-slate-200 block">Sandbox Role Switcher</span>
-                      Select a role below to change your account permissions immediately. Currently active: <strong className="text-indigo-650 dark:text-indigo-400 font-extrabold">{user.role}</strong>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 pt-1">
-                    {(['Citizen', 'Community Admin', 'Resolver', 'Authority'] as UserRole[]).map((r) => (
-                      <button
-                        key={r}
-                        type="button"
-                        onClick={async () => {
-                          if (onRoleChange) {
-                            await onRoleChange(r);
-                          }
-                        }}
-                        className={`px-2.5 py-1.5 rounded-lg border text-[10px] font-black uppercase transition-all cursor-pointer ${
-                          user.role === r
-                            ? 'bg-indigo-600 text-white border-indigo-600 shadow'
-                            : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-305 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
-                        }`}
-                      >
-                        {r}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Preset Demo Accounts Credentials */}
-                <div className="p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl max-w-md space-y-3">
-                  <div className="text-[10px] text-slate-655 dark:text-slate-350 leading-normal space-y-1.5">
-                    <span className="font-extrabold text-slate-800 dark:text-slate-200 block uppercase tracking-wider text-[9px] text-indigo-600 dark:text-indigo-400">
-                      🔑 Preset Hackathon Credentials
-                    </span>
-                    <p>You can use these accounts to sign in on different windows, browsers, or devices to test multiple roles simultaneously (Password: <code className="bg-slate-200 dark:bg-slate-800 px-1 py-0.5 rounded font-mono font-bold text-slate-700 dark:text-slate-300">password123</code>):</p>
-                    <ul className="list-disc list-inside space-y-1 font-mono text-[9px] text-slate-500 dark:text-slate-400">
-                      <li>Citizen: <strong className="text-slate-700 dark:text-slate-300">citizen@communityhero.net</strong></li>
-                      <li>Admin: <strong className="text-slate-700 dark:text-slate-300">admin@communityhero.net</strong></li>
-                      <li>Resolver: <strong className="text-slate-700 dark:text-slate-300">resolver@communityhero.net</strong></li>
-                      <li>Authority: <strong className="text-slate-700 dark:text-slate-300">authority@communityhero.net</strong></li>
-                    </ul>
-                  </div>
                 </div>
 
                 {/* Firestore Cache Troubleshooter */}

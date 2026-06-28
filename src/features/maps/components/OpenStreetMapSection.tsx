@@ -23,6 +23,7 @@ export interface OSMHotspot {
 export interface OSMZone {
   id: string;
   name: string;
+  areaName?: string;
   latitude: number;
   longitude: number;
   activeIssuesCount: number;
