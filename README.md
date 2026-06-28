@@ -38,6 +38,14 @@ To incentivize citizen participation, Community Hero implements a lightweight ga
 
 ---
 
+## App Screenshots
+
+![Community Hero screenshot 1](public/images/Screenshot%202026-06-28%20213854.png)
+![Community Hero screenshot 2](public/images/Screenshot%202026-06-28%20213948.png)
+![Community Hero screenshot 3](public/images/Screenshot%202026-06-28%20214039.png)
+
+---
+
 ## 📂 Project Directory Structure
 
 ```text
@@ -137,4 +145,3 @@ You can log in directly to these pre-configured user credentials (or use the 1-C
 
 > [!TIP]
 > **Dynamic Mock Data Mapping**: When you log in with any of these hackathon emails, the app automatically clones their rich mock statistics, activities, and communities onto your active session. After logging in, navigate to **Settings** -> **Preferences** tab and click **"Reset & Seed Sandbox Database"**. This purges the database and links all pre-seeded issues, comments, and notifications directly to your active Firebase UID!
-

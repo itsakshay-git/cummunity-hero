@@ -81,6 +81,7 @@ export default function ReportIssueForm({ communities, issues, onSubmit, onNavig
   const [scanning, setScanning] = useState(false);
   const [aiResult, setAiResult] = useState<any | null>(null);
   const [locating, setLocating] = useState(false);
+  const [searchingAddress, setSearchingAddress] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [mapProvider, setMapProvider] = useState<'google' | 'osm'>('osm');
   const [alertModalOpen, setAlertModalOpen] = useState(false);
@@ -235,6 +236,52 @@ export default function ReportIssueForm({ communities, issues, onSubmit, onNavig
       }
     } catch (error) {
       console.warn('Reverse geocoding failed:', error);
+    }
+  };
+
+  // Forward geocode typed address into coordinates using OpenStreetMap Nominatim.
+  const handleSearchAddress = async () => {
+    const addressQuery = formData.address.trim();
+    if (!addressQuery) {
+      setAlertModalMessage('Please enter an address before searching.');
+      setAlertModalOpen(true);
+      return;
+    }
+
+    setSearchingAddress(true);
+    try {
+      const cityHint = currentUser?.city ? `, ${currentUser.city}` : '';
+      const query = encodeURIComponent(`${addressQuery}${cityHint}`);
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&addressdetails=1&q=${query}`
+      );
+
+      if (!response.ok) {
+        throw new Error('Location search failed.');
+      }
+
+      const results = await response.json();
+      const match = Array.isArray(results) ? results[0] : null;
+      if (!match?.lat || !match?.lon) {
+        setAlertModalMessage('No matching location found. Try a more specific address, or pick the spot directly on the map.');
+        setAlertModalOpen(true);
+        return;
+      }
+
+      const lat = Number(match.lat);
+      const lon = Number(match.lon);
+      setFormData(prev => ({
+        ...prev,
+        latitude: lat,
+        longitude: lon,
+        address: match.display_name || prev.address
+      }));
+    } catch (error) {
+      console.warn('Address geocoding failed:', error);
+      setAlertModalMessage('Could not search that address right now. You can still select the exact location using the map picker.');
+      setAlertModalOpen(true);
+    } finally {
+      setSearchingAddress(false);
     }
   };
 
@@ -483,8 +530,10 @@ export default function ReportIssueForm({ communities, issues, onSubmit, onNavig
               severity={formData.severity}
               title={formData.title}
               locating={locating}
+              searchingAddress={searchingAddress}
               mapProvider={mapProvider}
               onLocateMe={handleLocateMe}
+              onSearchAddress={handleSearchAddress}
               onChangeAddress={(addr) => setFormData(prev => ({ ...prev, address: addr }))}
               onMapClick={(lat, lng) => {
                 setFormData(prev => ({ ...prev, latitude: lat, longitude: lng }));

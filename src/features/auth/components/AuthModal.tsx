@@ -10,7 +10,7 @@ import {
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../../../services/firebase/firebaseClient';
 import { UserRole } from '../../../types';
-import { X, Shield, Mail, Lock, User, Sparkles, AlertCircle } from 'lucide-react';
+import { X, Shield, Mail, Lock, User, Sparkles, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { getDistanceMeters } from '../../../lib/geoUtils';
 import { CITIES_MAPPING } from '../../../lib/constants';
 import { mockUsers } from '../../../lib/mockData';
@@ -58,9 +58,19 @@ export default function AuthModal({ isOpen, onClose, defaultRole = 'Citizen', on
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState('');
   const [role, setRole] = useState<UserRole>(defaultRole);
   const [selectedCityLabel, setSelectedCityLabel] = useState('Chandrapur');
+
+  useEffect(() => {
+    if (isOpen) {
+      setEmail('');
+      setPassword('');
+      setName('');
+      setShowPassword(false);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (userCoords) {
@@ -488,7 +498,7 @@ export default function AuthModal({ isOpen, onClose, defaultRole = 'Citizen', on
               </div>
 
               {/* Form */}
-              <form onSubmit={handleEmailAuth} className="space-y-4">
+              <form onSubmit={handleEmailAuth} className="space-y-4" autoComplete="off">
                 {isSignUp && (
                   <div>
                     <label className="block text-[11px] font-semibold text-slate-505 dark:text-slate-400 uppercase tracking-wider mb-1.5">Full Name</label>
@@ -498,6 +508,7 @@ export default function AuthModal({ isOpen, onClose, defaultRole = 'Citizen', on
                         id="auth-input-name"
                         type="text"
                         required
+                        autoComplete="off"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="Enter your name"
@@ -515,6 +526,7 @@ export default function AuthModal({ isOpen, onClose, defaultRole = 'Citizen', on
                       id="auth-input-email"
                       type="email"
                       required
+                      autoComplete="off"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="name@example.com"
@@ -529,13 +541,22 @@ export default function AuthModal({ isOpen, onClose, defaultRole = 'Citizen', on
                     <Lock className="absolute left-3.5 top-3 w-4 h-4 text-slate-400 dark:text-slate-500" />
                     <input 
                       id="auth-input-password"
-                      type="password"
+                      type={showPassword ? 'text' : 'password'}
                       required
+                      autoComplete="new-password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Min. 6 characters"
-                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-205 dark:border-slate-800 text-slate-800 dark:text-slate-100 focus:border-emerald-500 focus:bg-white dark:focus:bg-slate-900 rounded-xl text-xs font-medium focus:outline-none transition-all placeholder:text-slate-450 dark:placeholder:text-slate-600"
+                      className="w-full pl-10 pr-10 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-205 dark:border-slate-800 text-slate-800 dark:text-slate-100 focus:border-emerald-500 focus:bg-white dark:focus:bg-slate-900 rounded-xl text-xs font-medium focus:outline-none transition-all placeholder:text-slate-450 dark:placeholder:text-slate-600"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(prev => !prev)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-650 dark:text-slate-500 dark:hover:text-slate-200 bg-transparent border-0 cursor-pointer p-1 rounded-md"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                   </div>
                 </div>
 

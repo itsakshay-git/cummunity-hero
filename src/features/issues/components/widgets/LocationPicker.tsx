@@ -1,5 +1,5 @@
 import React from 'react';
-import { Loader2, Navigation, MapPin } from 'lucide-react';
+import { Loader2, Navigation, MapPin, Search } from 'lucide-react';
 import { GoogleMapSection, hasValidKey } from '../../../maps/components/GoogleMapSection';
 import { Map as GMap, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
 import OpenStreetMapSection from '../../../maps/components/OpenStreetMapSection';
@@ -13,8 +13,10 @@ interface LocationPickerProps {
   severity: SeverityLevel;
   title: string;
   locating: boolean;
+  searchingAddress: boolean;
   mapProvider: 'google' | 'osm';
   onLocateMe: () => void;
+  onSearchAddress: () => void;
   onChangeAddress: (address: string) => void;
   onMapClick: (lat: number, lng: number) => void;
   setMapProvider: React.Dispatch<React.SetStateAction<'google' | 'osm'>>;
@@ -28,8 +30,10 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
   severity,
   title,
   locating,
+  searchingAddress,
   mapProvider,
   onLocateMe,
+  onSearchAddress,
   onChangeAddress,
   onMapClick,
   setMapProvider
@@ -55,18 +59,32 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
           <span>{locating ? 'Locating...' : 'Use Current GPS'}</span>
         </button>
       </div>
-      <div className="relative">
-        <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-405 dark:text-slate-500" />
-        <input 
-          id="report-input-address"
-          type="text" 
-          placeholder="e.g. Lane 3, opposite Flat 402"
-          value={address}
-          onChange={(e) => onChangeAddress(e.target.value)}
-          className="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 text-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:bg-white dark:focus:bg-slate-900 transition-all"
-          required
-        />
+      <div className="flex flex-col sm:flex-row gap-2">
+        <div className="relative flex-1 min-w-0">
+          <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-405 dark:text-slate-400" />
+          <input
+            id="report-input-address"
+            type="text"
+            placeholder="Search street, landmark, society, or ward"
+            value={address}
+            onChange={(e) => onChangeAddress(e.target.value)}
+            className="w-full pl-10 pr-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/25 focus:border-emerald-500 placeholder:text-slate-400 dark:placeholder:text-slate-500 shadow-sm transition-all"
+            required
+          />
+        </div>
+        <button
+          type="button"
+          onClick={onSearchAddress}
+          disabled={searchingAddress || !address.trim()}
+          className="sm:w-24 px-3.5 py-2.5 rounded-xl bg-slate-900 dark:bg-emerald-600 hover:bg-slate-800 dark:hover:bg-emerald-500 disabled:bg-slate-200 disabled:dark:bg-slate-800 disabled:text-slate-400 text-white text-xs font-black flex items-center justify-center gap-1.5 border-0 cursor-pointer disabled:cursor-not-allowed transition-colors"
+        >
+          {searchingAddress ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+          <span>{searchingAddress ? 'Finding' : 'Find'}</span>
+        </button>
       </div>
+      <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">
+        Search the address to auto-detect coordinates, or tap directly on the map picker below for the exact incident spot.
+      </p>
 
       {/* Map display */}
       <div className="h-44 w-full rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-inner relative group">
