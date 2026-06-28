@@ -57,3 +57,6 @@ steps:
 
 images:
   - gcr.io/$PROJECT_ID/community-hero:$COMMIT_SHA
+
+options:
+  logging: CLOUD_LOGGING_ONLY
