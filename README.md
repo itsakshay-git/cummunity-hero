@@ -2,6 +2,10 @@
 
 **Community Hero** is a modern, social civic platform built to empower citizens, community leaders, and local authorities to flag, verify, and resolve hyperlocal issues. Moving away from standard, dry administrative dashboards, Community Hero is designed like a social network (inspired by Facebook feeds, Reddit threads, and Discord communities) to foster engagement, community cohesion, and citizen-led neighborhood auditing.
 
+**Live Demo:** https://community-hero-609432359077.asia-south1.run.app/
+
+**Project Description:** https://docs.google.com/document/d/1XGE4ymtieyf54wgS9fDfWDVtoXd5s-BsdPMqiJ5MjQ4/edit?tab=t.0#heading=h.exbdks54hbho
+
 ---
 
 ## 🚀 The Innovative Approach & Architecture
