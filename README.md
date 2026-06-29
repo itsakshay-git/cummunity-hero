@@ -4,7 +4,7 @@
 
 **Live Demo:** https://community-hero-609432359077.asia-south1.run.app/
 
-**Project Description:** https://docs.google.com/document/d/1XGE4ymtieyf54wgS9fDfWDVtoXd5s-BsdPMqiJ5MjQ4/edit?tab=t.0#heading=h.exbdks54hbho
+**Project Description:** https://docs.google.com/document/d/1XGE4ymtieyf54wgS9fDfWDVtoXd5s-BsdPMqiJ5MjQ4/edit?usp=sharing
 
 ---
 
